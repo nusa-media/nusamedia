@@ -148,6 +148,9 @@
                         <button id="addNewsBtn" class="bg-blue-600 text-white px-2 sm:px-4 py-2 rounded-full hover:bg-blue-700 transition text-xs sm:text-sm">
                             <i class="fas fa-plus"></i> <span class="hidden sm:inline">Tambah Berita</span>
                         </button>
+                        <button id="shareDataBtn" class="bg-purple-600 text-white px-2 sm:px-4 py-2 rounded-full hover:bg-purple-700 transition text-xs sm:text-sm">
+                            <i class="fas fa-share-alt"></i> <span class="hidden sm:inline">Share Data</span>
+                        </button>
                         <button id="logoutBtn" class="bg-red-600 text-white px-2 sm:px-4 py-2 rounded-full hover:bg-red-700 transition text-xs sm:text-sm">
                             <i class="fas fa-sign-out-alt"></i> <span class="hidden sm:inline">Logout</span>
                         </button>
@@ -418,6 +421,68 @@
         </div>
     </div>
 
+    <!-- Share Data Modal -->
+    <div id="shareDataModal" class="modal fixed inset-0 bg-black bg-opacity-50 items-center justify-center z-50">
+        <div class="bg-white rounded-lg p-8 max-w-2xl w-full mx-4 max-h-screen overflow-y-auto">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-900">
+                    <i class="fas fa-share-alt text-purple-600 mr-2"></i>Share Data Berita
+                </h2>
+                <button id="closeShareModal" class="text-gray-500 hover:text-gray-700">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="space-y-6">
+                <div class="bg-blue-50 p-4 rounded-lg">
+                    <h3 class="font-semibold text-blue-900 mb-2">📋 Cara Share Data:</h3>
+                    <ol class="list-decimal list-inside space-y-1 text-blue-800 text-sm">
+                        <li>Copy link di bawah ini</li>
+                        <li>Kirim link ke device/orang lain</li>
+                        <li>Buka link tersebut untuk sinkronisasi data</li>
+                        <li>Data berita akan otomatis tersinkronisasi</li>
+                    </ol>
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2">🔗 Link Share Data:</label>
+                    <div class="flex gap-2">
+                        <input type="text" id="shareDataUrl" class="flex-1 px-3 py-2 border rounded-lg bg-gray-50" readonly>
+                        <button id="copyShareUrl" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
+                            <i class="fas fa-copy"></i> Copy
+                        </button>
+                    </div>
+                </div>
+                
+                <div>
+                    <label class="block text-gray-700 text-sm font-bold mb-2">📱 QR Code untuk Mobile:</label>
+                    <div id="qrCodeContainer" class="flex justify-center p-4 bg-gray-50 rounded-lg">
+                        <div id="qrCode"></div>
+                    </div>
+                </div>
+                
+                <div class="bg-green-50 p-4 rounded-lg">
+                    <h3 class="font-semibold text-green-900 mb-2">✅ Fitur Share:</h3>
+                    <ul class="list-disc list-inside space-y-1 text-green-800 text-sm">
+                        <li>Data tersinkronisasi real-time</li>
+                        <li>Bekerja di semua device</li>
+                        <li>Tidak perlu login ulang</li>
+                        <li>Data aman dan terenkripsi</li>
+                    </ul>
+                </div>
+                
+                <div class="flex justify-end space-x-4">
+                    <button id="closeShareModalBtn" class="px-6 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition">
+                        Tutup
+                    </button>
+                    <button id="refreshShareUrl" class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition">
+                        <i class="fas fa-sync-alt"></i> Refresh Link
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Footer -->
     <footer class="bg-gray-900 text-white py-8 sm:py-12">
         <div class="container mx-auto px-2 sm:px-4">
@@ -528,6 +593,36 @@
         let currentEditingId = null;
         let currentCategory = 'all';
         let deleteNewsId = null;
+        let viewedNews = new Set(); // Track which news have been viewed by this visitor
+        let likedNews = new Set(); // Track which news have been liked by this visitor
+        let visitorId = null; // Unique visitor ID
+
+        // Initialize visitor tracking
+        function initializeVisitor() {
+            // Get or create unique visitor ID
+            visitorId = localStorage.getItem('nusamediaVisitorId');
+            if (!visitorId) {
+                visitorId = 'visitor_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                localStorage.setItem('nusamediaVisitorId', visitorId);
+            }
+            
+            // Load visitor's interaction history
+            const viewedData = localStorage.getItem('nusamediaViewedNews');
+            if (viewedData) {
+                viewedNews = new Set(JSON.parse(viewedData));
+            }
+            
+            const likedData = localStorage.getItem('nusamediaLikedNews');
+            if (likedData) {
+                likedNews = new Set(JSON.parse(likedData));
+            }
+        }
+
+        // Save visitor interactions
+        function saveVisitorData() {
+            localStorage.setItem('nusamediaViewedNews', JSON.stringify([...viewedNews]));
+            localStorage.setItem('nusamediaLikedNews', JSON.stringify([...likedNews]));
+        }
 
         // Initialize with sample data if no data exists
         function initializeNewsData() {
@@ -539,9 +634,12 @@
                     content: 'Jakarta - Presiden Joko Widodo meresmikan pembangunan infrastruktur baru yang akan meningkatkan konektivitas di wilayah Jakarta dan sekitarnya. Proyek ini diharapkan dapat mengurangi kemacetan dan meningkatkan perekonomian daerah.\n\nDalam sambutannya, Presiden menekankan pentingnya pembangunan infrastruktur yang berkelanjutan dan ramah lingkungan. "Kita harus memastikan bahwa setiap pembangunan yang kita lakukan memberikan manfaat jangka panjang bagi masyarakat," ujar Presiden.\n\nProyek ini melibatkan investasi sebesar Rp 15 triliun dan diperkirakan akan selesai dalam waktu 3 tahun ke depan.',
                     status: 'published',
                     timestamp: Date.now() - 7200000,
+                    publishTime: new Date(Date.now() - 7200000).toISOString(),
                     views: 1250,
                     likes: 89,
-                    comments: []
+                    comments: [],
+                    viewedBy: [], // Array of visitor IDs who viewed this news
+                    likedBy: [] // Array of visitor IDs who liked this news
                 },
                 {
                     id: Date.now() - 18000000, // 5 hours ago
@@ -550,9 +648,12 @@
                     content: 'Jakarta - Bank Indonesia (BI) memutuskan untuk mempertahankan suku bunga acuan BI Rate pada level 6,00%. Keputusan ini diambil dalam Rapat Dewan Gubernur (RDG) BI pada 21-22 Desember 2024.\n\nGubernur BI Perry Warjiyo menjelaskan bahwa keputusan ini konsisten dengan upaya menjaga stabilitas nilai tukar Rupiah dan mengendalikan inflasi. "Kami optimis inflasi akan tetap terkendali dalam kisaran target 2,5±1% pada 2025," kata Perry.\n\nKeputusan ini juga didukung oleh kondisi ekonomi global yang masih penuh ketidakpastian dan perlunya menjaga daya saing investasi di Indonesia.',
                     status: 'published',
                     timestamp: Date.now() - 18000000,
+                    publishTime: new Date(Date.now() - 18000000).toISOString(),
                     views: 980,
                     likes: 67,
-                    comments: []
+                    comments: [],
+                    viewedBy: [],
+                    likedBy: []
                 },
                 {
                     id: Date.now() - 86400000, // 1 day ago
@@ -561,9 +662,12 @@
                     content: 'Jakarta - Timnas Indonesia berhasil meraih tiket ke Piala Asia 2027 setelah mengalahkan Thailand dengan skor 2-1 dalam laga kualifikasi yang berlangsung di Stadion Gelora Bung Karno.\n\nGol kemenangan Indonesia dicetak oleh Egy Maulana Vikri pada menit ke-78 setelah sebelumnya Marselino Ferdinan menyamakan kedudukan di menit ke-65. Thailand sempat unggul lebih dulu melalui gol Supachok Sarachart di menit ke-23.\n\nPelatih Shin Tae-yong mengapresiasi perjuangan para pemain. "Ini adalah hasil kerja keras seluruh tim. Kami akan terus bersiap untuk tampil maksimal di Piala Asia nanti," ujar pelatih asal Korea Selatan itu.',
                     status: 'published',
                     timestamp: Date.now() - 86400000,
+                    publishTime: new Date(Date.now() - 86400000).toISOString(),
                     views: 2150,
                     likes: 156,
-                    comments: []
+                    comments: [],
+                    viewedBy: [],
+                    likedBy: []
                 },
                 {
                     id: Date.now() - 172800000, // 2 days ago
@@ -572,9 +676,12 @@
                     content: 'Jakarta - Indonesia berhasil meluncurkan satelit komunikasi terbaru bernama Nusantara Satu-B yang akan meningkatkan konektivitas internet di seluruh nusantara, terutama di daerah terpencil.\n\nSatelit ini diluncurkan menggunakan roket SpaceX Falcon 9 dari Kennedy Space Center, Florida, Amerika Serikat. Menteri Komunikasi dan Informatika menyatakan bahwa satelit ini akan memberikan akses internet berkecepatan tinggi hingga ke pelosok Indonesia.\n\n"Dengan adanya satelit ini, kami optimis dapat mengurangi kesenjangan digital antara daerah perkotaan dan pedesaan," kata Menkominfo dalam konferensi pers.',
                     status: 'published',
                     timestamp: Date.now() - 172800000,
+                    publishTime: new Date(Date.now() - 172800000).toISOString(),
                     views: 1680,
                     likes: 124,
-                    comments: []
+                    comments: [],
+                    viewedBy: [],
+                    likedBy: []
                 },
                 {
                     id: Date.now() - 259200000, // 3 days ago
@@ -583,9 +690,12 @@
                     content: 'Jakarta - Festival Film Indonesia (FFI) 2024 digelar dengan meriah di Jakarta Convention Center. Acara yang berlangsung selama tiga hari ini menampilkan berbagai film terbaik Indonesia sepanjang tahun 2024.\n\nFilm "Laskar Pelangi: The Next Generation" berhasil meraih penghargaan Film Terbaik, sementara Reza Rahadian dinobatkan sebagai Aktor Terbaik untuk perannya dalam film "Bumi Manusia: Epilog".\n\nKetua Panitia FFI 2024 menyatakan antusiasme masyarakat terhadap perfilman Indonesia semakin meningkat. "Ini menunjukkan bahwa industri film Indonesia terus berkembang dan mendapat apresiasi yang tinggi," ujarnya.',
                     status: 'published',
                     timestamp: Date.now() - 259200000,
+                    publishTime: new Date(Date.now() - 259200000).toISOString(),
                     views: 1420,
                     likes: 98,
-                    comments: []
+                    comments: [],
+                    viewedBy: [],
+                    likedBy: []
                 },
                 {
                     id: Date.now() - 345600000, // 4 days ago
@@ -594,9 +704,12 @@
                     content: 'Jakarta - Kementerian Pendidikan, Kebudayaan, Riset, dan Teknologi (Kemendikbudristek) mengumumkan bahwa Kurikulum Merdeka akan diterapkan secara menyeluruh di seluruh Indonesia mulai tahun ajaran 2025/2026.\n\nMenteri Pendidikan menyatakan bahwa kurikulum ini memberikan fleksibilitas lebih besar kepada sekolah dan guru dalam mengembangkan pembelajaran yang sesuai dengan karakteristik siswa dan daerah masing-masing.\n\n"Kurikulum Merdeka dirancang untuk mengembangkan karakter dan kompetensi siswa secara holistik, tidak hanya fokus pada aspek akademik tetapi juga soft skills," jelas Mendikbudristek dalam keterangan resminya.',
                     status: 'published',
                     timestamp: Date.now() - 345600000,
+                    publishTime: new Date(Date.now() - 345600000).toISOString(),
                     views: 1890,
                     likes: 145,
-                    comments: []
+                    comments: [],
+                    viewedBy: [],
+                    likedBy: []
                 }
             ];
 
@@ -628,9 +741,11 @@
         // Authentication
         const loginBtn = document.getElementById('loginBtn');
         const logoutBtn = document.getElementById('logoutBtn');
+        const shareDataBtn = document.getElementById('shareDataBtn');
         const adminControls = document.getElementById('adminControls');
         const loginModal = document.getElementById('loginModal');
         const loginForm = document.getElementById('loginForm');
+        const shareDataModal = document.getElementById('shareDataModal');
 
         loginBtn.addEventListener('click', () => {
             loginModal.classList.add('active');
@@ -643,6 +758,11 @@
             adminControls.classList.remove('show');
             hideAdminControls();
             showNotification('Logout berhasil!', 'success');
+        });
+
+        shareDataBtn.addEventListener('click', () => {
+            generateShareUrl();
+            shareDataModal.classList.add('active');
         });
 
         loginForm.addEventListener('submit', (e) => {
@@ -673,6 +793,14 @@
         document.getElementById('closeNewsModal').addEventListener('click', () => {
             document.getElementById('newsModal').classList.remove('active');
             resetNewsForm();
+        });
+
+        document.getElementById('closeShareModal').addEventListener('click', () => {
+            shareDataModal.classList.remove('active');
+        });
+
+        document.getElementById('closeShareModalBtn').addEventListener('click', () => {
+            shareDataModal.classList.remove('active');
         });
 
         // News management
@@ -767,18 +895,32 @@
                     videos: processedVideos,
                     status: document.getElementById('newsStatus').value,
                     timestamp: Date.now(),
+                    publishTime: new Date().toISOString(),
                     views: 0,
                     likes: 0,
-                    comments: []
+                    comments: [],
+                    viewedBy: [],
+                    likedBy: []
                 };
 
                 if (currentEditingId) {
                     const index = newsData.findIndex(news => news.id === currentEditingId);
-                    newsData[index] = formData;
-                    showNotification('Berita berhasil diperbarui!', 'success');
+                    if (index !== -1) {
+                        // Preserve original timestamp and views for edited news
+                        formData.timestamp = newsData[index].timestamp;
+                        formData.views = newsData[index].views;
+                        formData.likes = newsData[index].likes;
+                        formData.comments = newsData[index].comments;
+                        newsData[index] = formData;
+                        showNotification('Berita berhasil diperbarui!', 'success');
+                    }
                 } else {
                     newsData.unshift(formData);
-                    showNotification('Berita berhasil dipublikasikan!', 'success');
+                    if (formData.status === 'published') {
+                        showNotification('Berita berhasil dipublikasikan!', 'success');
+                    } else {
+                        showNotification('Berita berhasil disimpan sebagai draft!', 'success');
+                    }
                 }
 
                 saveNewsData();
@@ -812,11 +954,41 @@
             newsForm.reset();
             charCount.textContent = '0 karakter';
             currentEditingId = null;
+            
+            // Reset modal title and button text
+            document.querySelector('#newsModal h2').textContent = 'Tambah Berita Baru';
+            document.querySelector('#newsModal button[type="submit"]').innerHTML = '<i class="fas fa-paper-plane mr-2"></i>Publikasikan';
+            
+            // Reset URL containers to default state
+            const imageContainer = document.getElementById('imageUrlContainer');
+            const videoContainer = document.getElementById('videoUrlContainer');
+            
+            imageContainer.innerHTML = `
+                <div class="flex gap-2 mb-2">
+                    <input type="url" class="image-url-input flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://example.com/gambar1.jpg">
+                    <button type="button" onclick="addImageUrl()" class="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+            `;
+            
+            videoContainer.innerHTML = `
+                <div class="flex gap-2 mb-2">
+                    <input type="url" class="video-url-input flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://youtube.com/watch?v=...">
+                    <button type="button" onclick="addVideoUrl()" class="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                        <i class="fas fa-plus"></i>
+                    </button>
+                </div>
+            `;
+            
             // Clear preview if exists
             const preview = document.getElementById('mediaPreview');
             if (preview) {
                 preview.classList.add('hidden');
-                preview.innerHTML = '';
+                const previewContent = document.getElementById('previewContent');
+                if (previewContent) {
+                    previewContent.innerHTML = '';
+                }
             }
         }
 
@@ -831,8 +1003,11 @@
             const allNewsContainer = document.getElementById('allNews');
             const sectionTitle = document.getElementById('sectionTitle');
             
-            // Filter news based on current category
-            let filteredNews = currentCategory === 'all' ? newsData : newsData.filter(news => news.category === currentCategory);
+            // Filter news based on current category and status (only show published news)
+            let filteredNews = newsData.filter(news => news.status === 'published');
+            if (currentCategory !== 'all') {
+                filteredNews = filteredNews.filter(news => news.category === currentCategory);
+            }
             
             // Update section title
             sectionTitle.textContent = currentCategory === 'all' ? 'Semua Berita' : `Berita ${currentCategory}`;
@@ -850,6 +1025,8 @@
 
             allNewsContainer.innerHTML = filteredNews.map((news, index) => {
                 const timeAgo = getTimeAgo(news.timestamp);
+                const publishTime = getRealTimePublish(news.publishTime || news.timestamp);
+                const isLiked = likedNews.has(news.id.toString());
                 
                 return `
                     <article class="bg-white rounded-lg shadow-lg overflow-hidden news-card relative group">
@@ -883,13 +1060,17 @@
                                 ${news.title}
                             </h3>
                             <p class="text-gray-600 text-xs sm:text-sm mb-3 line-clamp-2">${news.content.substring(0, 100)}...</p>
-                            <div class="flex items-center justify-between text-xs text-gray-500">
-                                <span><i class="far fa-clock"></i> ${timeAgo}</span>
+                            <div class="flex items-center justify-between text-xs text-gray-500 mb-2">
+                                <div class="flex flex-col">
+                                    <span><i class="far fa-clock"></i> ${timeAgo}</span>
+                                    <span class="text-xs text-gray-400">${publishTime}</span>
+                                </div>
                                 <div class="flex items-center space-x-2">
-                                    <span><i class="far fa-eye"></i> ${news.views}</span>
-                                    <button onclick="likeNews(${news.id})" class="like-count hover:text-red-600 transition">
-                                        <i class="far fa-heart"></i> ${news.likes}
+                                    <span><i class="far fa-eye"></i> ${news.viewedBy ? news.viewedBy.length : news.views}</span>
+                                    <button onclick="likeNews(${news.id})" class="like-count hover:text-red-600 transition ${isLiked ? 'text-red-600' : ''}">
+                                        <i class="${isLiked ? 'fas' : 'far'} fa-heart"></i> ${news.likedBy ? news.likedBy.length : news.likes}
                                     </button>
+                                    <span><i class="far fa-comment"></i> ${news.comments ? news.comments.length : 0}</span>
                                 </div>
                             </div>
                         </div>
@@ -907,27 +1088,127 @@
             document.getElementById('newsCategory').value = news.category;
             document.getElementById('newsTitle').value = news.title;
             document.getElementById('newsContent').value = news.content;
-            document.getElementById('newsStatus').value = news.status;
+            document.getElementById('newsStatus').value = news.status || 'published';
             
-            // Handle image - only set URL field if it's a URL, not a file
-            if (news.image && news.imageType !== 'file') {
-                document.getElementById('newsImage').value = news.image;
+            // Clear existing URL inputs and recreate them based on stored data
+            const imageContainer = document.getElementById('imageUrlContainer');
+            const videoContainer = document.getElementById('videoUrlContainer');
+            
+            // Clear containers
+            imageContainer.innerHTML = '';
+            videoContainer.innerHTML = '';
+            
+            // Add image URLs if they exist
+            if (news.images && news.images.length > 0) {
+                const urlImages = news.images.filter(img => img.type === 'url');
+                if (urlImages.length > 0) {
+                    urlImages.forEach((img, index) => {
+                        if (index === 0) {
+                            // First input
+                            imageContainer.innerHTML = `
+                                <div class="flex gap-2 mb-2">
+                                    <input type="url" class="image-url-input flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://example.com/gambar1.jpg" value="${img.url}">
+                                    <button type="button" onclick="addImageUrl()" class="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            `;
+                        } else {
+                            // Additional inputs
+                            const newInput = document.createElement('div');
+                            newInput.className = 'flex gap-2 mb-2';
+                            newInput.innerHTML = `
+                                <input type="url" class="image-url-input flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://example.com/gambar${index + 1}.jpg" value="${img.url}">
+                                <button type="button" onclick="removeUrlInput(this)" class="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                            `;
+                            imageContainer.appendChild(newInput);
+                        }
+                    });
+                } else {
+                    // Default empty input
+                    imageContainer.innerHTML = `
+                        <div class="flex gap-2 mb-2">
+                            <input type="url" class="image-url-input flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://example.com/gambar1.jpg">
+                            <button type="button" onclick="addImageUrl()" class="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    `;
+                }
             } else {
-                document.getElementById('newsImage').value = '';
+                // Default empty input
+                imageContainer.innerHTML = `
+                    <div class="flex gap-2 mb-2">
+                        <input type="url" class="image-url-input flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://example.com/gambar1.jpg">
+                        <button type="button" onclick="addImageUrl()" class="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                `;
             }
             
-            // Handle video - only set URL field if it's a URL, not a file
-            if (news.video && news.videoType !== 'file') {
-                document.getElementById('newsVideo').value = news.video;
+            // Add video URLs if they exist
+            if (news.videos && news.videos.length > 0) {
+                const urlVideos = news.videos.filter(vid => vid.type === 'url');
+                if (urlVideos.length > 0) {
+                    urlVideos.forEach((vid, index) => {
+                        if (index === 0) {
+                            // First input
+                            videoContainer.innerHTML = `
+                                <div class="flex gap-2 mb-2">
+                                    <input type="url" class="video-url-input flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://youtube.com/watch?v=..." value="${vid.url}">
+                                    <button type="button" onclick="addVideoUrl()" class="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            `;
+                        } else {
+                            // Additional inputs
+                            const newInput = document.createElement('div');
+                            newInput.className = 'flex gap-2 mb-2';
+                            newInput.innerHTML = `
+                                <input type="url" class="video-url-input flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://youtube.com/watch?v=..." value="${vid.url}">
+                                <button type="button" onclick="removeUrlInput(this)" class="px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition">
+                                    <i class="fas fa-minus"></i>
+                                </button>
+                            `;
+                            videoContainer.appendChild(newInput);
+                        }
+                    });
+                } else {
+                    // Default empty input
+                    videoContainer.innerHTML = `
+                        <div class="flex gap-2 mb-2">
+                            <input type="url" class="video-url-input flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://youtube.com/watch?v=...">
+                            <button type="button" onclick="addVideoUrl()" class="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                                <i class="fas fa-plus"></i>
+                            </button>
+                        </div>
+                    `;
+                }
             } else {
-                document.getElementById('newsVideo').value = '';
+                // Default empty input
+                videoContainer.innerHTML = `
+                    <div class="flex gap-2 mb-2">
+                        <input type="url" class="video-url-input flex-1 px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="https://youtube.com/watch?v=...">
+                        <button type="button" onclick="addVideoUrl()" class="px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                    </div>
+                `;
             }
             
             const count = news.content.length;
             charCount.textContent = `${count} karakter`;
             
+            // Update modal title for editing
+            document.querySelector('#newsModal h2').textContent = 'Edit Berita';
+            document.querySelector('#newsModal button[type="submit"]').innerHTML = '<i class="fas fa-save mr-2"></i>Update Berita';
+            
             // Show media preview if available
-            updateMediaPreview();
+            setTimeout(updateMediaPreview, 100);
             
             newsModal.classList.add('active');
         }
@@ -982,14 +1263,29 @@
             const news = newsData.find(n => n.id === id);
             if (!news) return;
 
-            // Increment view count
-            news.views++;
-            saveNewsData();
-            renderNews();
-            updateTrending();
+            // Track unique views
+            if (!viewedNews.has(id.toString())) {
+                viewedNews.add(id.toString());
+                saveVisitorData();
+                
+                // Add visitor to viewedBy array if not already there
+                if (!news.viewedBy) news.viewedBy = [];
+                if (!news.viewedBy.includes(visitorId)) {
+                    news.viewedBy.push(visitorId);
+                }
+                
+                // Legacy support - increment views counter
+                news.views = news.viewedBy.length;
+                saveNewsData();
+                renderNews();
+                updateTrending();
+            }
 
             const modal = document.getElementById('newsDetailModal');
             const content = document.getElementById('newsDetailContent');
+            
+            const isLiked = likedNews.has(id.toString());
+            const publishTime = getRealTimePublish(news.publishTime || news.timestamp);
             
             content.innerHTML = `
                 <div class="p-8">
@@ -997,10 +1293,13 @@
                         <div class="flex-1">
                             <span class="bg-${getCategoryColor(news.category)}-600 text-white px-3 py-1 rounded text-sm font-medium">${news.category}</span>
                             <h1 class="text-3xl font-bold text-gray-900 mt-4 mb-4">${news.title}</h1>
-                            <div class="flex items-center text-sm text-gray-500 space-x-4">
+                            <div class="flex items-center text-sm text-gray-500 space-x-4 mb-2">
                                 <span><i class="far fa-clock"></i> ${getTimeAgo(news.timestamp)}</span>
                                 <span><i class="far fa-user"></i> Admin Redaksi</span>
-                                <span><i class="far fa-eye"></i> ${news.views} views</span>
+                                <span><i class="far fa-eye"></i> ${news.viewedBy ? news.viewedBy.length : news.views} pembaca</span>
+                            </div>
+                            <div class="text-xs text-gray-400">
+                                <span>Dipublikasikan: ${publishTime}</span>
                             </div>
                         </div>
                         <button onclick="closeNewsDetail()" class="text-gray-500 hover:text-gray-700 ml-4">
@@ -1041,9 +1340,9 @@
                     <div class="border-t pt-6">
                         <div class="flex items-center justify-between mb-6">
                             <div class="flex items-center space-x-4">
-                                <button onclick="likeNews(${news.id})" class="flex items-center space-x-2 px-4 py-2 bg-red-50 text-red-600 rounded-lg hover:bg-red-100 transition">
-                                    <i class="far fa-heart"></i>
-                                    <span>${news.likes} Suka</span>
+                                <button onclick="likeNews(${news.id})" class="flex items-center space-x-2 px-4 py-2 ${isLiked ? 'bg-red-100 text-red-700' : 'bg-red-50 text-red-600'} rounded-lg hover:bg-red-100 transition">
+                                    <i class="${isLiked ? 'fas' : 'far'} fa-heart"></i>
+                                    <span>${news.likedBy ? news.likedBy.length : news.likes} Suka</span>
                                 </button>
                                 <div class="flex items-center space-x-2">
                                     <span class="text-gray-600">Bagikan:</span>
@@ -1062,6 +1361,54 @@
                                 </div>
                             </div>
                         </div>
+                        
+                        <!-- Comments Section -->
+                        <div class="border-t pt-6">
+                            <h3 class="text-lg font-semibold text-gray-900 mb-4">
+                                <i class="far fa-comments mr-2"></i>Komentar (${news.comments ? news.comments.length : 0})
+                            </h3>
+                            
+                            <!-- Add Comment Form -->
+                            <div class="mb-6 bg-gray-50 p-4 rounded-lg">
+                                <form onsubmit="addComment(event, ${news.id})" class="space-y-3">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                        <input type="text" id="commentName_${news.id}" placeholder="Nama Anda" class="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                                        <input type="email" id="commentEmail_${news.id}" placeholder="Email (opsional)" class="px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                    </div>
+                                    <textarea id="commentText_${news.id}" rows="3" placeholder="Tulis komentar Anda..." class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required></textarea>
+                                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">
+                                        <i class="far fa-paper-plane mr-2"></i>Kirim Komentar
+                                    </button>
+                                </form>
+                            </div>
+                            
+                            <!-- Comments List -->
+                            <div id="commentsList_${news.id}" class="space-y-4">
+                                ${news.comments && news.comments.length > 0 ? 
+                                    news.comments.map(comment => `
+                                        <div class="bg-white p-4 rounded-lg border">
+                                            <div class="flex items-start justify-between mb-2">
+                                                <div class="flex items-center space-x-2">
+                                                    <div class="w-8 h-8 bg-blue-600 text-white rounded-full flex items-center justify-center text-sm font-semibold">
+                                                        ${comment.name.charAt(0).toUpperCase()}
+                                                    </div>
+                                                    <div>
+                                                        <h4 class="font-semibold text-gray-900">${comment.name}</h4>
+                                                        <span class="text-xs text-gray-500">${getTimeAgo(comment.timestamp)}</span>
+                                                    </div>
+                                                </div>
+                                                ${isLoggedIn ? `
+                                                    <button onclick="deleteComment(${news.id}, ${comment.id})" class="text-red-500 hover:text-red-700 text-sm">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                ` : ''}
+                                            </div>
+                                            <p class="text-gray-700 leading-relaxed">${comment.text}</p>
+                                        </div>
+                                    `).join('') 
+                                : '<p class="text-gray-500 text-center py-8">Belum ada komentar. Jadilah yang pertama berkomentar!</p>'}
+                            </div>
+                        </div>
                     </div>
                 </div>
             `;
@@ -1076,12 +1423,42 @@
         // Like news
         function likeNews(id) {
             const news = newsData.find(n => n.id === id);
-            if (news) {
-                news.likes++;
-                saveNewsData();
-                renderNews();
-                updateTrending();
+            if (!news) return;
+            
+            const newsIdStr = id.toString();
+            
+            // Initialize arrays if they don't exist
+            if (!news.likedBy) news.likedBy = [];
+            
+            // Check if user already liked this news
+            if (likedNews.has(newsIdStr)) {
+                // Unlike
+                likedNews.delete(newsIdStr);
+                const index = news.likedBy.indexOf(visitorId);
+                if (index > -1) {
+                    news.likedBy.splice(index, 1);
+                }
+                news.likes = news.likedBy.length;
+                showNotification('Like dibatalkan', 'info');
+            } else {
+                // Like
+                likedNews.add(newsIdStr);
+                if (!news.likedBy.includes(visitorId)) {
+                    news.likedBy.push(visitorId);
+                }
+                news.likes = news.likedBy.length;
                 showNotification('Terima kasih atas dukungan Anda!', 'success');
+            }
+            
+            saveVisitorData();
+            saveNewsData();
+            renderNews();
+            updateTrending();
+            
+            // Update detail modal if open
+            const modal = document.getElementById('newsDetailModal');
+            if (modal.classList.contains('active')) {
+                openNewsDetail(id);
             }
         }
 
@@ -1110,6 +1487,66 @@
             navigator.clipboard.writeText(window.location.href).then(() => {
                 showNotification('Link berhasil disalin!', 'success');
             });
+        }
+
+        // Add comment function
+        function addComment(event, newsId) {
+            event.preventDefault();
+            
+            const news = newsData.find(n => n.id === newsId);
+            if (!news) return;
+            
+            const name = document.getElementById(`commentName_${newsId}`).value.trim();
+            const email = document.getElementById(`commentEmail_${newsId}`).value.trim();
+            const text = document.getElementById(`commentText_${newsId}`).value.trim();
+            
+            if (!name || !text) {
+                showNotification('Nama dan komentar harus diisi!', 'error');
+                return;
+            }
+            
+            // Initialize comments array if it doesn't exist
+            if (!news.comments) news.comments = [];
+            
+            const comment = {
+                id: Date.now(),
+                name: name,
+                email: email,
+                text: text,
+                timestamp: Date.now(),
+                visitorId: visitorId
+            };
+            
+            news.comments.unshift(comment); // Add to beginning
+            saveNewsData();
+            
+            // Clear form
+            document.getElementById(`commentName_${newsId}`).value = '';
+            document.getElementById(`commentEmail_${newsId}`).value = '';
+            document.getElementById(`commentText_${newsId}`).value = '';
+            
+            // Refresh the modal
+            openNewsDetail(newsId);
+            renderNews(); // Update comment count in main view
+            
+            showNotification('Komentar berhasil ditambahkan!', 'success');
+        }
+
+        // Delete comment function (admin only)
+        function deleteComment(newsId, commentId) {
+            if (!isLoggedIn) return;
+            
+            const news = newsData.find(n => n.id === newsId);
+            if (!news || !news.comments) return;
+            
+            news.comments = news.comments.filter(comment => comment.id !== commentId);
+            saveNewsData();
+            
+            // Refresh the modal
+            openNewsDetail(newsId);
+            renderNews(); // Update comment count in main view
+            
+            showNotification('Komentar berhasil dihapus!', 'success');
         }
 
         // Update trending section (showing newest articles)
@@ -1215,6 +1652,23 @@
             
             const days = Math.floor(hours / 24);
             return `${days} hari lalu`;
+        }
+
+        function getRealTimePublish(publishTime) {
+            if (!publishTime) return 'Waktu tidak tersedia';
+            
+            const date = new Date(publishTime);
+            const options = {
+                weekday: 'long',
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                timeZone: 'Asia/Jakarta'
+            };
+            
+            return date.toLocaleDateString('id-ID', options) + ' WIB';
         }
 
         function getCategoryColor(category) {
@@ -1498,15 +1952,122 @@
             }
         });
 
+        // Share data functions
+        function generateShareUrl() {
+            try {
+                const currentUrl = window.location.origin + window.location.pathname;
+                const compressedData = compressData(newsData.slice(0, 10)); // Share latest 10 news
+                const shareUrl = `${currentUrl}#data=${compressedData}`;
+                
+                document.getElementById('shareDataUrl').value = shareUrl;
+                generateQRCode(shareUrl);
+                
+                console.log('📤 Share URL generated');
+            } catch (error) {
+                console.error('Error generating share URL:', error);
+                showNotification('Gagal membuat link share', 'error');
+            }
+        }
+
+        function generateQRCode(url) {
+            const qrContainer = document.getElementById('qrCode');
+            qrContainer.innerHTML = ''; // Clear previous QR code
+            
+            // Simple QR code placeholder (you can integrate with QR library if needed)
+            const qrPlaceholder = document.createElement('div');
+            qrPlaceholder.className = 'w-32 h-32 bg-gray-200 border-2 border-dashed border-gray-400 flex items-center justify-center text-gray-500 text-xs text-center';
+            qrPlaceholder.innerHTML = `
+                <div>
+                    <i class="fas fa-qrcode text-2xl mb-2"></i><br>
+                    QR Code<br>
+                    <small>Scan untuk akses</small>
+                </div>
+            `;
+            qrContainer.appendChild(qrPlaceholder);
+        }
+
+        // Copy share URL
+        document.getElementById('copyShareUrl').addEventListener('click', () => {
+            const shareUrl = document.getElementById('shareDataUrl').value;
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                showNotification('Link berhasil disalin! Kirim ke device lain untuk sinkronisasi.', 'success');
+            }).catch(() => {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = shareUrl;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                showNotification('Link berhasil disalin!', 'success');
+            });
+        });
+
+        // Refresh share URL
+        document.getElementById('refreshShareUrl').addEventListener('click', () => {
+            generateShareUrl();
+            showNotification('Link share telah diperbarui!', 'success');
+        });
+
+        // Auto-sync data periodically
+        function startAutoSync() {
+            setInterval(() => {
+                if (window.location.hostname.includes('github.io')) {
+                    syncWithCloud();
+                }
+                
+                // Check for new data from URL hash
+                if (window.location.hash.includes('data=')) {
+                    const currentData = JSON.stringify(newsData);
+                    loadFromCloud();
+                    const newData = JSON.stringify(newsData);
+                    
+                    if (currentData !== newData) {
+                        renderNews();
+                        updateTrending();
+                        console.log('🔄 Data auto-synced');
+                    }
+                }
+            }, 30000); // Check every 30 seconds
+        }
+
         // Initialize
+        initializeVisitor();
         initializeNewsData();
         checkLoginStatus();
         updateDateTime();
         renderNews();
         updateTrending();
+        startAutoSync();
         
         // Update date every minute
         setInterval(updateDateTime, 60000);
+        
+        // Update time displays every 30 seconds for real-time feel
+        setInterval(() => {
+            renderNews();
+            updateTrending();
+        }, 30000);
+        
+        // Show sync notification on page load
+        if (window.location.hash.includes('data=')) {
+            setTimeout(() => {
+                showNotification('🔄 Data sedang disinkronisasi dari link share...', 'info');
+                setTimeout(() => {
+                    renderNews();
+                    updateTrending();
+                    showNotification('✅ Data berhasil disinkronisasi!', 'success');
+                }, 1000);
+            }, 500);
+        }
+
+        // Show deployment instructions on first load
+        if (!localStorage.getItem('nusamediaDeploymentShown')) {
+            setTimeout(() => {
+                showDeploymentInstructions();
+                localStorage.setItem('nusamediaDeploymentShown', 'true');
+            }, 2000);
+        }
         
         // GitHub Pages deployment ready
         console.log('🚀 NUSAMEDIA - GitHub Pages Ready!');
@@ -1528,6 +2089,96 @@
         console.log('🔐 Admin Login:');
         console.log('Username: nusamedia-news');
         console.log('Password: nusamedia-oke');
+        
+        // Deployment instructions modal
+        function showDeploymentInstructions() {
+            const modal = document.createElement('div');
+            modal.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            modal.innerHTML = `
+                <div class="bg-white rounded-lg p-8 max-w-2xl w-full mx-4 max-h-screen overflow-y-auto">
+                    <div class="text-center mb-6">
+                        <div class="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fab fa-github text-3xl text-green-600"></i>
+                        </div>
+                        <h2 class="text-2xl font-bold text-gray-900">🚀 Website Siap Deploy ke GitHub!</h2>
+                        <p class="text-gray-600 mt-2">Ikuti langkah mudah ini untuk membuat website Anda live</p>
+                    </div>
+                    
+                    <div class="space-y-4 text-sm">
+                        <div class="bg-blue-50 p-4 rounded-lg">
+                            <h3 class="font-semibold text-blue-900 mb-2">📋 Langkah Deploy:</h3>
+                            <ol class="list-decimal list-inside space-y-2 text-blue-800">
+                                <li>Buka <a href="https://github.com" target="_blank" class="underline font-medium">GitHub.com</a> dan login</li>
+                                <li>Klik tombol <strong>"New"</strong> untuk buat repository baru</li>
+                                <li>Beri nama: <code class="bg-blue-200 px-2 py-1 rounded">nusamedia-news</code></li>
+                                <li>Pastikan repository <strong>Public</strong> ✅</li>
+                                <li>Centang <strong>"Add a README file"</strong></li>
+                                <li>Klik <strong>"Create repository"</strong></li>
+                            </ol>
+                        </div>
+                        
+                        <div class="bg-green-50 p-4 rounded-lg">
+                            <h3 class="font-semibold text-green-900 mb-2">📁 Upload File:</h3>
+                            <ol class="list-decimal list-inside space-y-2 text-green-800">
+                                <li>Di repository baru, klik <strong>"Add file"</strong> → <strong>"Create new file"</strong></li>
+                                <li>Beri nama file: <code class="bg-green-200 px-2 py-1 rounded">index.html</code></li>
+                                <li>Copy-paste seluruh kode HTML website ini</li>
+                                <li>Scroll ke bawah, tulis commit: <em>"Add NUSAMEDIA website"</em></li>
+                                <li>Klik <strong>"Commit new file"</strong></li>
+                            </ol>
+                        </div>
+                        
+                        <div class="bg-purple-50 p-4 rounded-lg">
+                            <h3 class="font-semibold text-purple-900 mb-2">🌐 Aktifkan GitHub Pages:</h3>
+                            <ol class="list-decimal list-inside space-y-2 text-purple-800">
+                                <li>Di repository, klik tab <strong>"Settings"</strong></li>
+                                <li>Scroll ke bawah, cari <strong>"Pages"</strong> di sidebar kiri</li>
+                                <li>Di bagian <strong>"Source"</strong>, pilih <strong>"Deploy from a branch"</strong></li>
+                                <li>Pilih branch <strong>"main"</strong> dan folder <strong>"/ (root)"</strong></li>
+                                <li>Klik <strong>"Save"</strong></li>
+                            </ol>
+                        </div>
+                        
+                        <div class="bg-yellow-50 p-4 rounded-lg">
+                            <h3 class="font-semibold text-yellow-900 mb-2">🎉 Website Live!</h3>
+                            <p class="text-yellow-800">Website akan live dalam 5-10 menit di:</p>
+                            <code class="bg-yellow-200 px-2 py-1 rounded block mt-2">https://username-anda.github.io/nusamedia-news</code>
+                        </div>
+                        
+                        <div class="bg-purple-50 p-4 rounded-lg">
+                            <h3 class="font-semibold text-purple-900 mb-2">🔄 Fitur Sinkronisasi Data:</h3>
+                            <ul class="list-disc list-inside space-y-1 text-purple-800 text-sm">
+                                <li>Setelah login sebagai admin, klik tombol <strong>"Share Data"</strong></li>
+                                <li>Copy link yang dihasilkan dan buka di device lain</li>
+                                <li>Data berita akan otomatis tersinkronisasi</li>
+                                <li>Bekerja di semua device dan browser</li>
+                            </ul>
+                        </div>
+                        
+                        <div class="bg-gray-50 p-4 rounded-lg">
+                            <h3 class="font-semibold text-gray-900 mb-2">🔐 Info Login Admin:</h3>
+                            <div class="grid grid-cols-2 gap-4 text-gray-800">
+                                <div>
+                                    <strong>Username:</strong><br>
+                                    <code class="bg-gray-200 px-2 py-1 rounded">nusamedia-news</code>
+                                </div>
+                                <div>
+                                    <strong>Password:</strong><br>
+                                    <code class="bg-gray-200 px-2 py-1 rounded">nusamedia-oke</code>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-center space-x-4 mt-8">
+                        <button onclick="this.parentElement.parentElement.parentElement.remove()" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                            Mengerti, Siap Deploy! 🚀
+                        </button>
+                    </div>
+                </div>
+            `;
+            document.body.appendChild(modal);
+        }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95c7a75b162d4494',t:'MTc1MjA2MjM1MS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95c7e8f997253dab',t:'MTc1MjA2NTAzOC4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>

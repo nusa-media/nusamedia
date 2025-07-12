@@ -1,0 +1,1635 @@
+
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nusa Media - Portal Berita Terpercaya</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        .gradient-bg {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+        }
+        .news-card:hover {
+            transform: translateY(-5px);
+            transition: all 0.3s ease;
+        }
+        .breaking-news {
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.7; }
+        }
+        
+        /* Responsive utilities */
+        .line-clamp-2 {
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+        }
+        
+        /* Mobile optimizations */
+        @media (max-width: 640px) {
+            .news-card:hover {
+                transform: none;
+            }
+            
+            .container {
+                padding-left: 1rem;
+                padding-right: 1rem;
+            }
+        }
+        
+        /* Smooth transitions for mobile menu */
+        #mobileNav {
+            transition: all 0.3s ease;
+        }
+        
+        #mobileSearchBar {
+            transition: all 0.3s ease;
+        }
+        
+        /* Ensure proper touch targets on mobile */
+        @media (max-width: 768px) {
+            button, a {
+                min-height: 44px;
+                min-width: 44px;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            
+            .nav-link {
+                padding: 12px 16px;
+                display: block;
+                text-align: center;
+            }
+        }
+
+        /* Image preview styles */
+        .image-preview {
+            position: relative;
+            display: inline-block;
+        }
+        
+        .image-preview img {
+            max-width: 150px;
+            max-height: 150px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        
+        .remove-image {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            background: #ef4444;
+            color: white;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body class="bg-gray-50">
+    <!-- Login Modal -->
+    <div id="loginModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-lg max-w-md w-full p-6">
+            <div class="flex justify-between items-center mb-6">
+                <h2 class="text-2xl font-bold text-gray-800">Login Admin</h2>
+                <button onclick="closeLoginModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+            </div>
+            <form onsubmit="handleLogin(event)">
+                <div class="mb-4">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Username</label>
+                    <input type="text" id="loginUsername" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div class="mb-6">
+                    <label class="block text-gray-700 text-sm font-bold mb-2">Password</label>
+                    <input type="password" id="loginPassword" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                </div>
+                <div id="loginError" class="text-red-500 text-sm mb-4 hidden"></div>
+                <button type="submit" class="w-full bg-blue-600 text-white py-2 px-4 rounded-lg hover:bg-blue-700">Login</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Admin Dashboard -->
+    <div id="adminDashboard" class="hidden">
+        <div class="bg-white shadow-lg">
+            <div class="container mx-auto px-4 py-4">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center">
+                        <img src="https://nusa-media.github.io/nusamedia/logo.png" alt="NusaMedia Logo" class="h-10 w-10 mr-3">
+                        <h1 class="text-2xl font-bold text-red-600">ADMIN NUSAMEDIA</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <span class="text-gray-600">Selamat datang, Admin</span>
+                        <button onclick="showMainSite()" class="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700">
+                            <i class="fas fa-eye mr-2"></i>Lihat Website
+                        </button>
+                        <button onclick="logout()" class="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700">
+                            <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="container mx-auto px-4 py-8">
+            <!-- Stats -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex items-center">
+                        <div class="bg-blue-500 text-white p-3 rounded-full">
+                            <i class="fas fa-newspaper"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-gray-500 text-sm">Total Berita</p>
+                            <p class="text-2xl font-bold" id="totalNews">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex items-center">
+                        <div class="bg-green-500 text-white p-3 rounded-full">
+                            <i class="fas fa-eye"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-gray-500 text-sm">Total Views</p>
+                            <p class="text-2xl font-bold" id="totalViews">0</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex items-center">
+                        <div class="bg-purple-500 text-white p-3 rounded-full">
+                            <i class="fas fa-tags"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-gray-500 text-sm">Kategori</p>
+                            <p class="text-2xl font-bold">8</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="bg-white rounded-lg shadow-md p-6">
+                    <div class="flex items-center">
+                        <div class="bg-orange-500 text-white p-3 rounded-full">
+                            <i class="fas fa-clock"></i>
+                        </div>
+                        <div class="ml-4">
+                            <p class="text-gray-500 text-sm">Hari Ini</p>
+                            <p class="text-2xl font-bold" id="todayNews">0</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Add News Form -->
+            <div class="bg-white rounded-lg shadow-md p-6 mb-8">
+                <h2 class="text-xl font-bold mb-6">Tambah Berita Baru</h2>
+                <form onsubmit="addNews(event)">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="md:col-span-2">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Judul Berita *</label>
+                            <input type="text" id="newsTitle" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Kategori *</label>
+                            <select id="newsCategory" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                                <option value="">Pilih Kategori</option>
+                                <option value="umum">Umum</option>
+                                <option value="politik">Politik</option>
+                                <option value="ekonomi">Ekonomi</option>
+                                <option value="olahraga">Olahraga</option>
+                                <option value="teknologi">Teknologi</option>
+                                <option value="hiburan">Hiburan</option>
+                                <option value="pendidikan">Pendidikan</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Penulis</label>
+                            <input type="text" id="newsAuthor" value="Tim Redaksi" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <div class="md:col-span-2">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Ringkasan Berita</label>
+                            <textarea id="newsExcerpt" rows="3" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Ringkasan singkat berita..."></textarea>
+                        </div>
+                        
+                        <div class="md:col-span-2">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Isi Berita *</label>
+                            <textarea id="newsContent" rows="8" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Tulis isi berita lengkap di sini..." required></textarea>
+                        </div>
+                        
+                        <div class="md:col-span-2">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Foto Berita (Maksimal 4)</label>
+                            <input type="file" id="newsImages" multiple accept="image/*" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="previewImages()">
+                            <p class="text-gray-500 text-sm mt-1">Format: JPG, PNG, GIF. Maksimal 4 foto.</p>
+                            <div id="imagePreview" class="mt-4 flex flex-wrap gap-4"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex justify-end space-x-4">
+                        <button type="button" onclick="resetForm()" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600">Reset</button>
+                        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                            <i class="fas fa-plus mr-2"></i>Tambah Berita
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Recent News -->
+            <div class="bg-white rounded-lg shadow-md p-6">
+                <h2 class="text-xl font-bold mb-6">Berita Terbaru</h2>
+                <div id="adminNewsList" class="space-y-4">
+                    <!-- Admin news list will be populated here -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit News Modal -->
+    <div id="editModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4 hidden">
+        <div class="bg-white rounded-lg max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-bold text-gray-800">Edit Berita</h2>
+                    <button onclick="closeEditModal()" class="text-gray-500 hover:text-gray-700 text-2xl">&times;</button>
+                </div>
+                <form onsubmit="updateNews(event)">
+                    <input type="hidden" id="editNewsId">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div class="md:col-span-2">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Judul Berita *</label>
+                            <input type="text" id="editNewsTitle" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Kategori *</label>
+                            <select id="editNewsCategory" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                                <option value="">Pilih Kategori</option>
+                                <option value="umum">Umum</option>
+                                <option value="politik">Politik</option>
+                                <option value="ekonomi">Ekonomi</option>
+                                <option value="olahraga">Olahraga</option>
+                                <option value="teknologi">Teknologi</option>
+                                <option value="hiburan">Hiburan</option>
+                                <option value="pendidikan">Pendidikan</option>
+                            </select>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Penulis</label>
+                            <input type="text" id="editNewsAuthor" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <div class="md:col-span-2">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Ringkasan Berita</label>
+                            <textarea id="editNewsExcerpt" rows="3" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                        </div>
+                        
+                        <div class="md:col-span-2">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Isi Berita *</label>
+                            <textarea id="editNewsContent" rows="8" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" required></textarea>
+                        </div>
+                        
+                        <div class="md:col-span-2">
+                            <label class="block text-gray-700 text-sm font-bold mb-2">Foto Berita (Maksimal 4)</label>
+                            <input type="file" id="editNewsImages" multiple accept="image/*" class="w-full px-3 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500" onchange="previewEditImages()">
+                            <p class="text-gray-500 text-sm mt-1">Format: JPG, PNG, GIF. Maksimal 4 foto. Kosongkan jika tidak ingin mengubah foto.</p>
+                            <div id="editImagePreview" class="mt-4 flex flex-wrap gap-4"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 flex justify-end space-x-4">
+                        <button type="button" onclick="closeEditModal()" class="bg-gray-500 text-white px-6 py-2 rounded-lg hover:bg-gray-600">Batal</button>
+                        <button type="submit" class="bg-blue-600 text-white px-6 py-2 rounded-lg hover:bg-blue-700">
+                            <i class="fas fa-save mr-2"></i>Simpan Perubahan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Website -->
+    <div id="mainWebsite">
+        <!-- Header -->
+        <header class="bg-white shadow-lg sticky top-0 z-50">
+            <div class="container mx-auto px-4">
+                <!-- Top Bar - Hidden on mobile -->
+                <div class="hidden md:flex justify-between items-center py-2 text-sm text-gray-600 border-b">
+                    <div class="flex items-center space-x-4">
+                        <span><i class="far fa-calendar"></i> <span id="currentDate">Loading...</span></span>
+                    </div>
+                    <div class="flex items-center space-x-2 lg:space-x-4 text-xs">
+                        <a href="#" class="hover:text-blue-600 hidden lg:inline">Tentang Kami</a>
+                        <a href="#" class="hover:text-blue-600 hidden lg:inline">Box Redaksi</a>
+                        <a href="#" class="hover:text-blue-600">Kontak Kami</a>
+                        <a href="#" class="hover:text-blue-600 hidden lg:inline">Pedoman Cyber</a>
+                        <a href="#" class="hover:text-blue-600 hidden lg:inline">SOP Perlindungan Wartawan</a>
+                        <a href="#" class="hover:text-blue-600 hidden lg:inline">Kode Etik Jurnalistik</a>
+                        <a href="#" class="hover:text-blue-600">Iklan & Entertainment</a>
+
+                    </div>
+                </div>
+                
+                <!-- Main Header -->
+                <div class="flex justify-between items-center py-4">
+                    <div class="flex items-center">
+                        <img src="https://nusa-media.github.io/nusamedia/logo.png" alt="NusaMedia Logo" class="h-8 w-8 sm:h-10 sm:w-10 mr-2 sm:mr-3">
+                        <div class="flex flex-col sm:flex-row sm:items-center">
+                            <h1 class="text-xl sm:text-2xl lg:text-3xl font-bold text-red-600 cursor-pointer" onclick="showAllNews()">NUSAMEDIA</h1>
+                            <span class="text-xs sm:text-sm text-gray-500 sm:ml-2">Portal Berita Terpercaya</span>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2 sm:space-x-4">
+                        <!-- Mobile Menu Button -->
+                        <button id="mobileMenuBtn" class="md:hidden text-gray-600 hover:text-red-600">
+                            <i class="fas fa-bars text-xl"></i>
+                        </button>
+                        <!-- Search - Hidden on small mobile -->
+                        <div class="relative hidden sm:block">
+                            <input type="text" id="searchInput" placeholder="Cari berita..." class="pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 w-32 sm:w-48 lg:w-64">
+                            <button onclick="performSearch()" class="fas fa-search absolute left-3 top-3 text-gray-400 hover:text-blue-600 cursor-pointer"></button>
+                        </div>
+                        <!-- Mobile Search Button -->
+                        <button id="mobileSearchBtn" class="sm:hidden text-gray-600 hover:text-red-600">
+                            <i class="fas fa-search text-lg"></i>
+                        </button>
+                        <button onclick="showLoginModal()" class="bg-blue-600 text-white px-2 py-1 sm:px-3 sm:py-2 rounded-lg hover:bg-blue-700 text-xs sm:text-sm">
+                            <i class="fas fa-user-shield mr-1"></i><span class="hidden sm:inline">Admin</span>
+                        </button>
+                        <button class="bg-red-600 text-white px-2 py-1 sm:px-4 sm:py-2 rounded-lg hover:bg-red-700 text-sm">
+                            <i class="fas fa-play"></i> <span class="hidden sm:inline">LIVE</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <!-- Mobile Search Bar -->
+                <div id="mobileSearchBar" class="hidden sm:hidden pb-4">
+                    <div class="relative">
+                        <input type="text" id="mobileSearchInput" placeholder="Cari berita..." class="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button onclick="performMobileSearch()" class="fas fa-search absolute left-3 top-3 text-gray-400 hover:text-blue-600 cursor-pointer"></button>
+                    </div>
+                </div>
+                
+                <!-- Navigation -->
+                <nav class="py-3 border-t">
+                    <!-- Desktop Navigation -->
+                    <ul class="hidden md:flex space-x-4 lg:space-x-8 text-sm font-medium overflow-x-auto">
+                        <li><a href="#" onclick="showCategory('beranda')" class="nav-link text-red-600 hover:text-red-800 whitespace-nowrap">BERANDA</a></li>
+                        <li><a href="#" onclick="showCategory('umum')" class="nav-link text-gray-700 hover:text-red-600 whitespace-nowrap">UMUM</a></li>
+                        <li><a href="#" onclick="showCategory('politik')" class="nav-link text-gray-700 hover:text-red-600 whitespace-nowrap">POLITIK</a></li>
+                        <li><a href="#" onclick="showCategory('ekonomi')" class="nav-link text-gray-700 hover:text-red-600 whitespace-nowrap">EKONOMI</a></li>
+                        <li><a href="#" onclick="showCategory('olahraga')" class="nav-link text-gray-700 hover:text-red-600 whitespace-nowrap">OLAHRAGA</a></li>
+                        <li><a href="#" onclick="showCategory('teknologi')" class="nav-link text-gray-700 hover:text-red-600 whitespace-nowrap">TEKNOLOGI</a></li>
+                        <li><a href="#" onclick="showCategory('hiburan')" class="nav-link text-gray-700 hover:text-red-600 whitespace-nowrap">HIBURAN</a></li>
+                        <li><a href="#" onclick="showCategory('pendidikan')" class="nav-link text-gray-700 hover:text-red-600 whitespace-nowrap">PENDIDIKAN</a></li>
+                    </ul>
+                    
+                    <!-- Mobile Navigation -->
+                    <div id="mobileNav" class="md:hidden hidden">
+                        <div class="grid grid-cols-2 gap-2 text-sm font-medium">
+                            <a href="#" onclick="showCategory('beranda')" class="nav-link text-red-600 hover:text-red-800 py-2 px-3 rounded text-center">BERANDA</a>
+                            <a href="#" onclick="showCategory('umum')" class="nav-link text-gray-700 hover:text-red-600 py-2 px-3 rounded text-center">UMUM</a>
+                            <a href="#" onclick="showCategory('politik')" class="nav-link text-gray-700 hover:text-red-600 py-2 px-3 rounded text-center">POLITIK</a>
+                            <a href="#" onclick="showCategory('ekonomi')" class="nav-link text-gray-700 hover:text-red-600 py-2 px-3 rounded text-center">EKONOMI</a>
+                            <a href="#" onclick="showCategory('olahraga')" class="nav-link text-gray-700 hover:text-red-600 py-2 px-3 rounded text-center">OLAHRAGA</a>
+                            <a href="#" onclick="showCategory('teknologi')" class="nav-link text-gray-700 hover:text-red-600 py-2 px-3 rounded text-center">TEKNOLOGI</a>
+                            <a href="#" onclick="showCategory('hiburan')" class="nav-link text-gray-700 hover:text-red-600 py-2 px-3 rounded text-center">HIBURAN</a>
+                            <a href="#" onclick="showCategory('pendidikan')" class="nav-link text-gray-700 hover:text-red-600 py-2 px-3 rounded text-center">PENDIDIKAN</a>
+                        </div>
+                    </div>
+                </nav>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="container mx-auto px-4 py-4 sm:py-8">
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-4 lg:gap-8">
+                <!-- Left Content -->
+                <div class="lg:col-span-3">
+                    <!-- Latest News -->
+                    <section class="mb-6 lg:mb-8">
+                        <div class="flex items-center justify-between mb-4 lg:mb-6">
+                            <h2 class="text-xl sm:text-2xl font-bold text-gray-800" id="sectionTitle">Berita Terkini</h2>
+                            <a href="#" class="text-blue-600 hover:text-blue-800 text-sm font-medium hidden sm:block">Lihat Semua →</a>
+                        </div>
+                        
+                        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 lg:gap-6" id="newsContainer">
+                            <!-- News will be populated here -->
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Sidebar -->
+                <aside class="lg:col-span-1">
+                    <!-- Popular News -->
+                    <div class="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-6">
+                        <h3 class="text-lg font-bold mb-4 text-gray-800">Berita Populer</h3>
+                        <div class="space-y-4">
+                            <article class="flex items-start space-x-3">
+                                <span class="bg-red-600 text-white text-xs font-bold px-2 py-1 rounded flex-shrink-0">1</span>
+                                <div class="min-w-0">
+                                    <h4 class="text-sm font-medium text-gray-800 hover:text-blue-600 cursor-pointer line-clamp-2">Harga BBM Turun Mulai Januari 2025</h4>
+                                    <p class="text-xs text-gray-500 mt-1">2 jam lalu • 2.1K views</p>
+                                </div>
+                            </article>
+                            
+                            <article class="flex items-start space-x-3">
+                                <span class="bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded flex-shrink-0">2</span>
+                                <div class="min-w-0">
+                                    <h4 class="text-sm font-medium text-gray-800 hover:text-blue-600 cursor-pointer line-clamp-2">Gempa 6.2 SR Guncang Sumatra Barat</h4>
+                                    <p class="text-xs text-gray-500 mt-1">4 jam lalu • 1.8K views</p>
+                                </div>
+                            </article>
+                            
+                            <article class="flex items-start space-x-3">
+                                <span class="bg-yellow-500 text-white text-xs font-bold px-2 py-1 rounded flex-shrink-0">3</span>
+                                <div class="min-w-0">
+                                    <h4 class="text-sm font-medium text-gray-800 hover:text-blue-600 cursor-pointer line-clamp-2">Vaksin COVID-19 Varian Baru Tiba di Indonesia</h4>
+                                    <p class="text-xs text-gray-500 mt-1">6 jam lalu • 1.5K views</p>
+                                </div>
+                            </article>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-gray-800 text-white py-8 sm:py-12">
+            <div class="container mx-auto px-4">
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 lg:gap-8">
+                    <div class="sm:col-span-2 lg:col-span-1">
+                        <div class="flex items-center mb-4">
+                            <img src="https://nusa-media.github.io/nusamedia/logo.png" alt="NusaMedia Logo" class="h-8 w-8 mr-3">
+                            <h3 class="text-xl font-bold text-red-600">NUSAMEDIA</h3>
+                        </div>
+                        <p class="text-gray-300 text-sm mb-4">Portal berita terpercaya yang menyajikan informasi terkini dan akurat untuk masyarakat Indonesia.</p>
+                        <div class="flex space-x-4">
+                            <a href="#" class="text-gray-300 hover:text-white text-lg"><i class="fab fa-facebook"></i></a>
+                            <a href="#" class="text-gray-300 hover:text-white text-lg"><i class="fab fa-tiktok"></i></a>
+                            <a href="#" class="text-gray-300 hover:text-white text-lg"><i class="fab fa-instagram"></i></a>
+                            <a href="#" class="text-gray-300 hover:text-white text-lg"><i class="fab fa-youtube"></i></a>
+                            <a href="#" class="text-gray-300 hover:text-white text-lg"><i class="fab fa-whatsapp"></i></a>
+                            <a href="#" class="text-gray-300 hover:text-white text-lg"><i class="fab fa-twitter"></i></a>
+                        </div>
+                    </div>
+                    
+                    <div class="text-left">
+                        <h4 class="font-bold mb-4">Kategori</h4>
+                        <ul class="space-y-2 text-sm text-gray-300">
+                            <li><a href="#" class="hover:text-white">Umum</a></li>
+                            <li><a href="#" class="hover:text-white">Politik</a></li>
+                            <li><a href="#" class="hover:text-white">Ekonomi</a></li>
+                            <li><a href="#" class="hover:text-white">Olahraga</a></li>
+                            <li><a href="#" class="hover:text-white">Teknologi</a></li>
+                            <li><a href="#" class="hover:text-white">Hiburan</a></li>
+                            <li><a href="#" class="hover:text-white">Pendidikan</a></li>
+                        </ul>
+                    </div>
+                    
+                    <div class="text-left">
+                        <h4 class="font-bold mb-4">Layanan</h4>
+                        <ul class="space-y-2 text-sm text-gray-300">
+                            <li><a href="#" class="hover:text-white">Tentang Kami</a></li>
+                            <li><a href="#" class="hover:text-white">Box Redaksi</a></li>
+                            <li><a href="#" class="hover:text-white">Kontak Kami</a></li>
+                            <li><a href="#" class="hover:text-white">Pedoman Cyber</a></li>
+                            <li><a href="#" class="hover:text-white">SOP Perlindungan Wartawan</a></li>
+                            <li><a href="#" class="hover:text-white">Kode Etik Jurnalistik</a></li>
+                            <li><a href="#" class="hover:text-white">Iklan & Entertainment</a></li>
+                        </ul>
+                    </div>
+                    
+                    <div>
+                        <h4 class="font-bold mb-4">Kontak</h4>
+                        <div class="space-y-2 text-sm text-gray-300">
+                            <p class="flex items-start"><i class="fas fa-map-marker-alt mr-2 mt-1 flex-shrink-0"></i><span>Jakarta, Indonesia</span></p>
+                            <p class="flex items-center"><i class="fas fa-phone mr-2 flex-shrink-0"></i><span>+62 21 1234 5678</span></p>
+                            <p class="flex items-center"><i class="fas fa-envelope mr-2 flex-shrink-0"></i><span class="break-all">info@nusamedia.com</span></p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="border-t border-gray-700 mt-6 sm:mt-8 pt-6 sm:pt-8 text-center text-sm text-gray-400">
+                    <p>&copy; 2024 NusaMedia. Semua hak dilindungi undang-undang.</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <script>
+        // Admin credentials
+        const ADMIN_CREDENTIALS = {
+            username: 'nusamedia-news',
+            password: 'nusamedia-oke'
+        };
+
+        // Global variables
+        let isLoggedIn = false;
+        let selectedImages = [];
+        let selectedEditImages = [];
+        let adminNews = JSON.parse(localStorage.getItem('adminNews')) || [];
+        let editingNewsId = null;
+
+        // News database
+        const newsDatabase = {
+            beranda: [
+                {
+                    title: "Pemerintah Luncurkan Program Bantuan Ekonomi Baru untuk UMKM",
+                    category: "EKONOMI",
+                    excerpt: "Program ini diharapkan dapat membantu pemulihan ekonomi nasional...",
+                    time: "2 jam lalu",
+                    views: "1.2K",
+                    icon: "fas fa-chart-line",
+                    gradient: "from-blue-500 to-purple-600"
+                },
+                {
+                    title: "Indonesia Luncurkan Satelit Komunikasi Terbaru",
+                    category: "TEKNOLOGI",
+                    excerpt: "Satelit ini akan meningkatkan konektivitas internet di daerah terpencil...",
+                    time: "1 jam lalu",
+                    views: "856",
+                    icon: "fas fa-laptop",
+                    gradient: "from-purple-400 to-pink-500"
+                },
+                {
+                    title: "Program Penanaman 1 Juta Pohon Dimulai",
+                    category: "UMUM",
+                    excerpt: "Pemerintah targetkan pengurangan emisi karbon sebesar 30%...",
+                    time: "3 jam lalu",
+                    views: "642",
+                    icon: "fas fa-leaf",
+                    gradient: "from-teal-400 to-green-500"
+                },
+                {
+                    title: "Timnas Indonesia Lolos ke Final Piala AFF",
+                    category: "OLAHRAGA",
+                    excerpt: "Prestasi gemilang setelah mengalahkan Thailand 2-1...",
+                    time: "4 jam lalu",
+                    views: "2.8K",
+                    icon: "fas fa-futbol",
+                    gradient: "from-orange-400 to-red-500"
+                },
+                {
+                    title: "Kurikulum Merdeka Diterapkan di Seluruh Indonesia",
+                    category: "PENDIDIKAN",
+                    excerpt: "Sistem pendidikan baru yang lebih fleksibel dan adaptif...",
+                    time: "5 jam lalu",
+                    views: "1.1K",
+                    icon: "fas fa-graduation-cap",
+                    gradient: "from-pink-400 to-purple-500"
+                },
+                {
+                    title: "Harga Pangan Stabil Jelang Akhir Tahun",
+                    category: "EKONOMI",
+                    excerpt: "Pemerintah berhasil menjaga stabilitas harga kebutuhan pokok...",
+                    time: "6 jam lalu",
+                    views: "890",
+                    icon: "fas fa-shopping-cart",
+                    gradient: "from-green-400 to-teal-500"
+                }
+            ],
+            umum: [
+                {
+                    title: "Program Penanaman 1 Juta Pohon Dimulai",
+                    category: "UMUM",
+                    excerpt: "Pemerintah targetkan pengurangan emisi karbon sebesar 30%...",
+                    time: "1 jam lalu",
+                    views: "1.5K",
+                    icon: "fas fa-leaf",
+                    gradient: "from-green-400 to-teal-500"
+                },
+                {
+                    title: "Festival Budaya Nusantara Digelar di 34 Provinsi",
+                    category: "UMUM",
+                    excerpt: "Perayaan keberagaman budaya Indonesia dalam satu acara besar...",
+                    time: "2 jam lalu",
+                    views: "2.1K",
+                    icon: "fas fa-masks-theater",
+                    gradient: "from-pink-400 to-purple-500"
+                },
+                {
+                    title: "Indonesia Raih Penghargaan Lingkungan dari PBB",
+                    category: "UMUM",
+                    excerpt: "Pengakuan internasional atas komitmen pelestarian lingkungan...",
+                    time: "4 jam lalu",
+                    views: "980",
+                    icon: "fas fa-award",
+                    gradient: "from-emerald-400 to-green-500"
+                }
+            ],
+            politik: [
+                {
+                    title: "DPR Sahkan RUU Kesehatan Mental Nasional",
+                    category: "POLITIK",
+                    excerpt: "Undang-undang baru ini akan meningkatkan layanan kesehatan mental...",
+                    time: "2 jam lalu",
+                    views: "1.3K",
+                    icon: "fas fa-gavel",
+                    gradient: "from-red-400 to-pink-500"
+                }
+            ],
+            ekonomi: [
+                {
+                    title: "Inflasi Indonesia Turun ke Level Terendah dalam 5 Tahun",
+                    category: "EKONOMI",
+                    excerpt: "Bank Indonesia optimis target inflasi 2024 tercapai...",
+                    time: "1 jam lalu",
+                    views: "1.8K",
+                    icon: "fas fa-chart-line",
+                    gradient: "from-green-400 to-blue-500"
+                }
+            ],
+            olahraga: [
+                {
+                    title: "Timnas Indonesia Menang Telak 3-0 Lawan Malaysia",
+                    category: "OLAHRAGA",
+                    excerpt: "Kemenangan gemilang di kandang sendiri...",
+                    time: "1 jam lalu",
+                    views: "3.2K",
+                    icon: "fas fa-futbol",
+                    gradient: "from-orange-400 to-red-500"
+                }
+            ],
+            teknologi: [
+                {
+                    title: "Indonesia Luncurkan Satelit Komunikasi Terbaru",
+                    category: "TEKNOLOGI",
+                    excerpt: "Satelit ini akan meningkatkan konektivitas internet di daerah terpencil...",
+                    time: "1 jam lalu",
+                    views: "1.5K",
+                    icon: "fas fa-satellite",
+                    gradient: "from-purple-400 to-pink-500"
+                }
+            ],
+            hiburan: [
+                {
+                    title: "Film Indonesia Menang di Festival Cannes",
+                    category: "HIBURAN",
+                    excerpt: "Prestasi membanggakan perfilman Indonesia di kancah internasional...",
+                    time: "2 jam lalu",
+                    views: "2.1K",
+                    icon: "fas fa-film",
+                    gradient: "from-pink-400 to-rose-500"
+                }
+            ],
+            pendidikan: [
+                {
+                    title: "Kurikulum Merdeka Diterapkan di Seluruh Indonesia",
+                    category: "PENDIDIKAN",
+                    excerpt: "Sistem pendidikan baru yang lebih fleksibel dan adaptif...",
+                    time: "1 jam lalu",
+                    views: "1.3K",
+                    icon: "fas fa-graduation-cap",
+                    gradient: "from-blue-400 to-indigo-500"
+                }
+            ]
+        };
+
+        // Initialize page
+        document.addEventListener('DOMContentLoaded', function() {
+            checkLoginStatus();
+            loadAdminNews();
+            
+            // Check if there's a news URL parameter
+            const urlParams = new URLSearchParams(window.location.search);
+            const newsId = urlParams.get('id');
+            const newsSlug = urlParams.get('news');
+            
+            if (newsId && newsSlug) {
+                // Find and show the specific news article
+                setTimeout(() => {
+                    const allNews = [...adminNews, ...Object.values(newsDatabase).flat()];
+                    const newsItem = allNews.find(n => n.id == newsId);
+                    if (newsItem) {
+                        showArticlePage(newsItem.title, newsId);
+                    } else {
+                        showAllNews();
+                    }
+                }, 100);
+            } else {
+                showAllNews();
+            }
+            
+            updateCurrentDate();
+            initializeMobileFeatures();
+            updateAdminStats();
+        });
+
+        // Load admin news and update main database
+        function loadAdminNews() {
+            adminNews = JSON.parse(localStorage.getItem('adminNews')) || [];
+            updateMainNewsDatabase();
+        }
+
+        // Check login status
+        function checkLoginStatus() {
+            isLoggedIn = localStorage.getItem('adminLoggedIn') === 'true';
+            if (isLoggedIn) {
+                showAdminDashboard();
+            }
+        }
+
+        // Login functions
+        function showLoginModal() {
+            document.getElementById('loginModal').classList.remove('hidden');
+        }
+
+        function closeLoginModal() {
+            document.getElementById('loginModal').classList.add('hidden');
+            document.getElementById('loginError').classList.add('hidden');
+        }
+
+        function handleLogin(event) {
+            event.preventDefault();
+            const username = document.getElementById('loginUsername').value;
+            const password = document.getElementById('loginPassword').value;
+            
+            if (username === ADMIN_CREDENTIALS.username && password === ADMIN_CREDENTIALS.password) {
+                isLoggedIn = true;
+                localStorage.setItem('adminLoggedIn', 'true');
+                closeLoginModal();
+                showAdminDashboard();
+                document.getElementById('loginUsername').value = '';
+                document.getElementById('loginPassword').value = '';
+            } else {
+                document.getElementById('loginError').textContent = 'Username atau password salah!';
+                document.getElementById('loginError').classList.remove('hidden');
+            }
+        }
+
+        function logout() {
+            isLoggedIn = false;
+            localStorage.removeItem('adminLoggedIn');
+            showMainSite();
+        }
+
+        // Navigation functions
+        function showAdminDashboard() {
+            document.getElementById('mainWebsite').classList.add('hidden');
+            document.getElementById('adminDashboard').classList.remove('hidden');
+            updateAdminStats();
+            displayAdminNews();
+        }
+
+        function showMainSite() {
+            document.getElementById('adminDashboard').classList.add('hidden');
+            document.getElementById('mainWebsite').classList.remove('hidden');
+            showAllNews();
+        }
+
+        // Image preview functions
+        function previewImages() {
+            const files = document.getElementById('newsImages').files;
+            const previewContainer = document.getElementById('imagePreview');
+            
+            if (files.length > 4) {
+                alert('Maksimal 4 foto yang dapat diupload!');
+                document.getElementById('newsImages').value = '';
+                return;
+            }
+            
+            selectedImages = [];
+            previewContainer.innerHTML = '';
+            
+            Array.from(files).forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    selectedImages.push(e.target.result);
+                    
+                    const imageDiv = document.createElement('div');
+                    imageDiv.className = 'image-preview';
+                    imageDiv.innerHTML = `
+                        <img src="${e.target.result}" alt="Preview ${index + 1}">
+                        <button type="button" class="remove-image" onclick="removeImage(${index})">×</button>
+                    `;
+                    previewContainer.appendChild(imageDiv);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function previewEditImages() {
+            const files = document.getElementById('editNewsImages').files;
+            const previewContainer = document.getElementById('editImagePreview');
+            
+            if (files.length > 4) {
+                alert('Maksimal 4 foto yang dapat diupload!');
+                document.getElementById('editNewsImages').value = '';
+                return;
+            }
+            
+            selectedEditImages = [];
+            previewContainer.innerHTML = '';
+            
+            Array.from(files).forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    selectedEditImages.push(e.target.result);
+                    
+                    const imageDiv = document.createElement('div');
+                    imageDiv.className = 'image-preview';
+                    imageDiv.innerHTML = `
+                        <img src="${e.target.result}" alt="Preview ${index + 1}">
+                        <button type="button" class="remove-image" onclick="removeEditImage(${index})">×</button>
+                    `;
+                    previewContainer.appendChild(imageDiv);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function removeImage(index) {
+            selectedImages.splice(index, 1);
+            const previewContainer = document.getElementById('imagePreview');
+            previewContainer.children[index].remove();
+            
+            // Update file input
+            const dt = new DataTransfer();
+            const files = document.getElementById('newsImages').files;
+            for (let i = 0; i < files.length; i++) {
+                if (i !== index) {
+                    dt.items.add(files[i]);
+                }
+            }
+            document.getElementById('newsImages').files = dt.files;
+        }
+
+        function removeEditImage(index) {
+            selectedEditImages.splice(index, 1);
+            const previewContainer = document.getElementById('editImagePreview');
+            previewContainer.children[index].remove();
+            
+            // Update file input
+            const dt = new DataTransfer();
+            const files = document.getElementById('editNewsImages').files;
+            for (let i = 0; i < files.length; i++) {
+                if (i !== index) {
+                    dt.items.add(files[i]);
+                }
+            }
+            document.getElementById('editNewsImages').files = dt.files;
+        }
+
+        // Add news function
+        function addNews(event) {
+            event.preventDefault();
+            
+            const title = document.getElementById('newsTitle').value;
+            const category = document.getElementById('newsCategory').value;
+            const author = document.getElementById('newsAuthor').value || 'Tim Redaksi';
+            const excerpt = document.getElementById('newsExcerpt').value || title.substring(0, 100) + '...';
+            const content = document.getElementById('newsContent').value;
+            
+            const newNews = {
+                id: Date.now(),
+                title: title,
+                category: category.toUpperCase(),
+                excerpt: excerpt,
+                content: content,
+                author: author,
+                time: 'Baru saja',
+                views: '0',
+                images: selectedImages,
+                date: new Date().toISOString(),
+                icon: getCategoryIcon(category),
+                gradient: getCategoryGradient(category)
+            };
+            
+            // Add to admin news
+            adminNews.unshift(newNews);
+            localStorage.setItem('adminNews', JSON.stringify(adminNews));
+            
+            // Update main news database
+            updateMainNewsDatabase();
+            
+            alert('Berita berhasil ditambahkan!');
+            resetForm();
+            updateAdminStats();
+            displayAdminNews();
+        }
+
+        function getCategoryIcon(category) {
+            const icons = {
+                'umum': 'fas fa-newspaper',
+                'politik': 'fas fa-gavel',
+                'ekonomi': 'fas fa-chart-line',
+                'olahraga': 'fas fa-futbol',
+                'teknologi': 'fas fa-laptop',
+                'hiburan': 'fas fa-film',
+                'pendidikan': 'fas fa-graduation-cap'
+            };
+            return icons[category] || 'fas fa-newspaper';
+        }
+
+        function getCategoryGradient(category) {
+            const gradients = {
+                'umum': 'from-green-400 to-teal-500',
+                'politik': 'from-red-400 to-pink-500',
+                'ekonomi': 'from-blue-400 to-indigo-500',
+                'olahraga': 'from-orange-400 to-red-500',
+                'teknologi': 'from-purple-400 to-pink-500',
+                'hiburan': 'from-pink-400 to-rose-500',
+                'pendidikan': 'from-blue-400 to-indigo-500'
+            };
+            return gradients[category] || 'from-gray-400 to-gray-500';
+        }
+
+        function resetForm() {
+            document.getElementById('newsTitle').value = '';
+            document.getElementById('newsCategory').value = '';
+            document.getElementById('newsAuthor').value = 'Tim Redaksi';
+            document.getElementById('newsExcerpt').value = '';
+            document.getElementById('newsContent').value = '';
+            document.getElementById('newsImages').value = '';
+            document.getElementById('imagePreview').innerHTML = '';
+            selectedImages = [];
+        }
+
+        // Update admin stats
+        function updateAdminStats() {
+            const totalNews = adminNews.length + Object.values(newsDatabase).flat().length;
+            const totalViews = adminNews.reduce((sum, news) => sum + parseInt(news.views.replace('K', '000').replace('.', '')), 0) + 15000;
+            const today = new Date().toDateString();
+            const todayNews = adminNews.filter(news => new Date(news.date).toDateString() === today).length;
+            
+            document.getElementById('totalNews').textContent = totalNews;
+            document.getElementById('totalViews').textContent = Math.floor(totalViews / 1000) + 'K';
+            document.getElementById('todayNews').textContent = todayNews;
+        }
+
+        // Display admin news
+        function displayAdminNews() {
+            const container = document.getElementById('adminNewsList');
+            
+            // Get all news (admin + default) for editing
+            const allEditableNews = [...adminNews];
+            
+            // Add default news with unique IDs for editing
+            Object.values(newsDatabase).flat().forEach(news => {
+                if (!news.id) {
+                    news.id = 'default_' + Math.random().toString(36).substr(2, 9);
+                    news.isDefault = true;
+                }
+                if (!allEditableNews.find(n => n.title === news.title)) {
+                    allEditableNews.push(news);
+                }
+            });
+            
+            if (allEditableNews.length === 0) {
+                container.innerHTML = '<p class="text-gray-500 text-center py-8">Belum ada berita yang ditambahkan.</p>';
+                return;
+            }
+            
+            container.innerHTML = allEditableNews.map(news => `
+                <div class="border rounded-lg p-4 hover:bg-gray-50">
+                    <div class="flex justify-between items-start">
+                        <div class="flex-1">
+                            <div class="flex items-center space-x-2 mb-2">
+                                <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">${news.category}</span>
+                                <span class="text-gray-500 text-sm">${news.time}</span>
+                                ${news.isDefault ? '<span class="bg-gray-100 text-gray-600 px-2 py-1 rounded text-xs">Default</span>' : ''}
+                            </div>
+                            <h3 class="font-bold text-lg mb-2">${news.title}</h3>
+                            <p class="text-gray-600 text-sm mb-2">${news.excerpt}</p>
+                            <div class="flex items-center justify-between">
+                                <div class="flex items-center text-gray-500 text-sm">
+                                    <i class="far fa-user mr-1"></i>
+                                    <span>${news.author || 'Tim Redaksi'}</span>
+                                    <i class="far fa-eye ml-4 mr-1"></i>
+                                    <span>${news.views} views</span>
+                                </div>
+                                <div class="flex space-x-2">
+                                    <button onclick="editNews('${news.id}')" class="bg-yellow-500 text-white px-3 py-1 rounded text-sm hover:bg-yellow-600">
+                                        <i class="fas fa-edit mr-1"></i>Edit
+                                    </button>
+                                    <button onclick="deleteNews('${news.id}')" class="bg-red-500 text-white px-3 py-1 rounded text-sm hover:bg-red-600">
+                                        <i class="fas fa-trash mr-1"></i>Hapus
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        ${news.images && news.images.length > 0 ? `
+                            <div class="ml-4">
+                                <img src="${news.images[0]}" alt="News image" class="w-20 h-20 object-cover rounded">
+                                ${news.images.length > 1 ? `<span class="text-xs text-gray-500">+${news.images.length - 1} foto</span>` : ''}
+                            </div>
+                        ` : ''}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // Edit news function
+        function editNews(newsId) {
+            let news = adminNews.find(n => n.id == newsId);
+            
+            // If not found in admin news, search in default news
+            if (!news) {
+                const allNews = Object.values(newsDatabase).flat();
+                news = allNews.find(n => n.id == newsId);
+            }
+            
+            if (!news) return;
+            
+            editingNewsId = newsId;
+            
+            // Fill form with existing data
+            document.getElementById('editNewsId').value = newsId;
+            document.getElementById('editNewsTitle').value = news.title;
+            document.getElementById('editNewsCategory').value = news.category.toLowerCase();
+            document.getElementById('editNewsAuthor').value = news.author || 'Tim Redaksi';
+            document.getElementById('editNewsExcerpt').value = news.excerpt;
+            document.getElementById('editNewsContent').value = news.content || generateDefaultContent(news.title, news.excerpt);
+            
+            // Show existing images
+            const previewContainer = document.getElementById('editImagePreview');
+            previewContainer.innerHTML = '';
+            if (news.images && news.images.length > 0) {
+                news.images.forEach((img, index) => {
+                    const imageDiv = document.createElement('div');
+                    imageDiv.className = 'image-preview';
+                    imageDiv.innerHTML = `
+                        <img src="${img}" alt="Current image ${index + 1}">
+                        <span class="text-xs text-gray-500 block text-center mt-1">Foto saat ini</span>
+                    `;
+                    previewContainer.appendChild(imageDiv);
+                });
+            }
+            
+            // Show modal
+            document.getElementById('editModal').classList.remove('hidden');
+        }
+
+        // Generate default content for news without content
+        function generateDefaultContent(title, excerpt) {
+            return `Jakarta - ${title} menjadi sorotan utama hari ini. ${excerpt}
+
+Berbagai pihak memberikan respons positif terhadap perkembangan ini yang diharapkan dapat membawa dampak baik bagi masyarakat Indonesia.
+
+Menurut sumber terpercaya, langkah ini merupakan bagian dari upaya berkelanjutan untuk meningkatkan kesejahteraan rakyat. Implementasi kebijakan ini akan dilakukan secara bertahap dengan melibatkan berbagai stakeholder terkait.
+
+"Kami berkomitmen untuk terus memberikan yang terbaik bagi bangsa dan negara," ujar salah satu pejabat terkait dalam konferensi pers yang diselenggarakan hari ini.
+
+Ke depannya, diharapkan inisiatif ini dapat menjadi contoh baik dan dapat direplikasi di berbagai daerah lainnya untuk mencapai tujuan pembangunan nasional yang berkelanjutan.`;
+        }
+
+        // Update news function
+        function updateNews(event) {
+            event.preventDefault();
+            
+            const newsId = document.getElementById('editNewsId').value;
+            const title = document.getElementById('editNewsTitle').value;
+            const category = document.getElementById('editNewsCategory').value;
+            const author = document.getElementById('editNewsAuthor').value || 'Tim Redaksi';
+            const excerpt = document.getElementById('editNewsExcerpt').value || title.substring(0, 100) + '...';
+            const content = document.getElementById('editNewsContent').value;
+            
+            // Check if it's an admin news or default news
+            const adminNewsIndex = adminNews.findIndex(n => n.id == newsId);
+            
+            if (adminNewsIndex !== -1) {
+                // Update existing admin news
+                adminNews[adminNewsIndex] = {
+                    ...adminNews[adminNewsIndex],
+                    title: title,
+                    category: category.toUpperCase(),
+                    author: author,
+                    excerpt: excerpt,
+                    content: content,
+                    images: selectedEditImages.length > 0 ? selectedEditImages : adminNews[adminNewsIndex].images,
+                    icon: getCategoryIcon(category),
+                    gradient: getCategoryGradient(category)
+                };
+            } else {
+                // Convert default news to admin news
+                const newAdminNews = {
+                    id: Date.now(),
+                    title: title,
+                    category: category.toUpperCase(),
+                    author: author,
+                    excerpt: excerpt,
+                    content: content,
+                    time: 'Baru saja',
+                    views: '0',
+                    images: selectedEditImages.length > 0 ? selectedEditImages : [],
+                    date: new Date().toISOString(),
+                    icon: getCategoryIcon(category),
+                    gradient: getCategoryGradient(category)
+                };
+                adminNews.unshift(newAdminNews);
+                
+                // Remove from default database to avoid duplicates
+                Object.keys(newsDatabase).forEach(cat => {
+                    newsDatabase[cat] = newsDatabase[cat].filter(n => n.id != newsId);
+                });
+            }
+            
+            // Save to localStorage
+            localStorage.setItem('adminNews', JSON.stringify(adminNews));
+            
+            // Update main news database
+            updateMainNewsDatabase();
+            
+            alert('Berita berhasil diperbarui!');
+            closeEditModal();
+            displayAdminNews();
+            updateAdminStats();
+        }
+
+        // Delete news function
+        function deleteNews(newsId) {
+            if (confirm('Apakah Anda yakin ingin menghapus berita ini?')) {
+                // Remove from admin news
+                adminNews = adminNews.filter(n => n.id != newsId);
+                localStorage.setItem('adminNews', JSON.stringify(adminNews));
+                
+                // Remove from default database if it exists there
+                Object.keys(newsDatabase).forEach(cat => {
+                    newsDatabase[cat] = newsDatabase[cat].filter(n => n.id != newsId);
+                });
+                
+                // Update main news database
+                updateMainNewsDatabase();
+                
+                alert('Berita berhasil dihapus!');
+                displayAdminNews();
+                updateAdminStats();
+            }
+        }
+
+        // Close edit modal
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+            selectedEditImages = [];
+            editingNewsId = null;
+            document.getElementById('editNewsImages').value = '';
+            document.getElementById('editImagePreview').innerHTML = '';
+        }
+
+        // Update main news database with admin news
+        function updateMainNewsDatabase() {
+            // First, remove all admin news from all categories to prevent duplicates
+            Object.keys(newsDatabase).forEach(category => {
+                newsDatabase[category] = newsDatabase[category].filter(news => 
+                    !news.id || (typeof news.id === 'string' && news.id.startsWith('default_')) || news.id < 1000000000000
+                );
+            });
+            
+            // Add admin news to appropriate categories
+            adminNews.forEach(news => {
+                const category = news.category.toLowerCase();
+                if (newsDatabase[category]) {
+                    // Check if news already exists in category to prevent duplicates
+                    const exists = newsDatabase[category].find(n => n.title === news.title);
+                    if (!exists) {
+                        newsDatabase[category].unshift(news);
+                    }
+                }
+                
+                // Add to beranda if not already there
+                const existsInBeranda = newsDatabase.beranda.find(n => n.title === news.title);
+                if (!existsInBeranda) {
+                    newsDatabase.beranda.unshift(news);
+                }
+            });
+            
+            // Limit beranda to prevent too many items
+            newsDatabase.beranda = newsDatabase.beranda.slice(0, 20);
+        }
+
+        // Initialize mobile features
+        function initializeMobileFeatures() {
+            // Mobile menu toggle
+            const mobileMenuBtn = document.getElementById('mobileMenuBtn');
+            const mobileNav = document.getElementById('mobileNav');
+            
+            if (mobileMenuBtn && mobileNav) {
+                mobileMenuBtn.addEventListener('click', function() {
+                    mobileNav.classList.toggle('hidden');
+                });
+            }
+
+            // Mobile search toggle
+            const mobileSearchBtn = document.getElementById('mobileSearchBtn');
+            const mobileSearchBar = document.getElementById('mobileSearchBar');
+            
+            if (mobileSearchBtn && mobileSearchBar) {
+                mobileSearchBtn.addEventListener('click', function() {
+                    mobileSearchBar.classList.toggle('hidden');
+                    if (!mobileSearchBar.classList.contains('hidden')) {
+                        document.getElementById('mobileSearchInput').focus();
+                    }
+                });
+            }
+
+            // Mobile search input
+            const mobileSearchInput = document.getElementById('mobileSearchInput');
+            if (mobileSearchInput) {
+                mobileSearchInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        performMobileSearch();
+                    }
+                });
+            }
+        }
+
+        // Mobile search function
+        window.performMobileSearch = function() {
+            const searchTerm = document.getElementById('mobileSearchInput').value.trim().toLowerCase();
+            if (searchTerm) {
+                const searchResults = [];
+                
+                // Search through all categories including admin news
+                const allNews = [...adminNews, ...Object.values(newsDatabase).flat()];
+                allNews.forEach(news => {
+                    if (news.title.toLowerCase().includes(searchTerm) || 
+                        news.excerpt.toLowerCase().includes(searchTerm) ||
+                        news.category.toLowerCase().includes(searchTerm)) {
+                        searchResults.push(news);
+                    }
+                });
+
+                // Remove duplicates
+                const uniqueResults = searchResults.filter((news, index, self) => 
+                    index === self.findIndex(n => n.title === news.title)
+                );
+
+                displayNews(uniqueResults, `Hasil Pencarian: "${searchTerm}"`);
+                updateActiveNav('search');
+                
+                // Clear search input and hide search bar
+                document.getElementById('mobileSearchInput').value = '';
+                document.getElementById('mobileSearchBar').classList.add('hidden');
+            } else {
+                alert('Masukkan kata kunci pencarian!');
+            }
+        }
+
+        // Function to update current date
+        function updateCurrentDate() {
+            const now = new Date();
+            const days = ['Minggu', 'Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+            const months = ['Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni', 
+                           'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'];
+            
+            const dayName = days[now.getDay()];
+            const date = now.getDate();
+            const month = months[now.getMonth()];
+            const year = now.getFullYear();
+            
+            const formattedDate = `${dayName}, ${date} ${month} ${year}`;
+            const dateElement = document.getElementById('currentDate');
+            if (dateElement) {
+                dateElement.textContent = formattedDate;
+            }
+        }
+
+        // Update date every minute
+        setInterval(updateCurrentDate, 60000);
+
+        // Search functionality
+        const searchInput = document.getElementById('searchInput');
+        if (searchInput) {
+            searchInput.addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    performSearch();
+                }
+            });
+        }
+
+        // Search function
+        window.performSearch = function() {
+            const searchTerm = document.getElementById('searchInput').value.trim().toLowerCase();
+            if (searchTerm) {
+                const searchResults = [];
+                
+                // Search through all categories including admin news
+                const allNews = [...adminNews, ...Object.values(newsDatabase).flat()];
+                allNews.forEach(news => {
+                    if (news.title.toLowerCase().includes(searchTerm) || 
+                        news.excerpt.toLowerCase().includes(searchTerm) ||
+                        news.category.toLowerCase().includes(searchTerm)) {
+                        searchResults.push(news);
+                    }
+                });
+
+                // Remove duplicates
+                const uniqueResults = searchResults.filter((news, index, self) => 
+                    index === self.findIndex(n => n.title === news.title)
+                );
+
+                displayNews(uniqueResults, `Hasil Pencarian: "${searchTerm}"`);
+                updateActiveNav('search');
+                
+                // Clear search input
+                document.getElementById('searchInput').value = '';
+            } else {
+                alert('Masukkan kata kunci pencarian!');
+            }
+        }
+
+        // Category navigation function
+        window.showCategory = function(category) {
+            event.preventDefault();
+            updateActiveNav(category);
+            
+            if (category === 'beranda') {
+                showAllNews();
+            } else {
+                const categoryNews = [...(newsDatabase[category] || [])];
+                // Add admin news for this category
+                const adminCategoryNews = adminNews.filter(news => news.category.toLowerCase() === category);
+                const allCategoryNews = [...adminCategoryNews, ...categoryNews];
+                
+                const categoryNames = {
+                    'umum': 'Umum',
+                    'politik': 'Politik',
+                    'ekonomi': 'Ekonomi',
+                    'olahraga': 'Olahraga',
+                    'teknologi': 'Teknologi',
+                    'hiburan': 'Hiburan',
+                    'pendidikan': 'Pendidikan'
+                };
+                displayNews(allCategoryNews, `Berita ${categoryNames[category]}`);
+            }
+        }
+
+        // Show all news (beranda)
+        window.showAllNews = function() {
+            const allNews = [...adminNews, ...newsDatabase.beranda];
+            displayNews(allNews, 'Berita Terkini');
+            updateActiveNav('beranda');
+        }
+
+        // Update active navigation
+        function updateActiveNav(activeCategory) {
+            document.querySelectorAll('.nav-link').forEach(link => {
+                link.className = 'nav-link text-gray-700 hover:text-red-600';
+            });
+            
+            if (activeCategory === 'beranda') {
+                const berandaLink = document.querySelector('a[onclick="showCategory(\'beranda\')"]');
+                if (berandaLink) {
+                    berandaLink.className = 'nav-link text-red-600 hover:text-red-800';
+                }
+            } else if (activeCategory !== 'search' && activeCategory !== '') {
+                const categoryLink = document.querySelector(`a[onclick="showCategory('${activeCategory}')"]`);
+                if (categoryLink) {
+                    categoryLink.className = 'nav-link text-red-600 hover:text-red-800';
+                }
+            }
+        }
+
+        // Display news function
+        function displayNews(newsArray, sectionTitle) {
+            const titleElement = document.getElementById('sectionTitle');
+            const container = document.getElementById('newsContainer');
+            
+            if (titleElement) {
+                titleElement.textContent = sectionTitle;
+            }
+            
+            if (!container) return;
+            
+            if (newsArray.length === 0) {
+                container.innerHTML = `
+                    <div class="col-span-full text-center py-12">
+                        <i class="fas fa-search text-4xl text-gray-400 mb-4"></i>
+                        <p class="text-gray-500">Tidak ada berita yang ditemukan</p>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = newsArray.map(news => `
+                <article class="bg-white rounded-lg shadow-md overflow-hidden news-card cursor-pointer" onclick="showArticlePage('${news.title.replace(/'/g, "\\'")}', ${news.id || 0})">
+                    ${news.images && news.images.length > 0 ? `
+                        <div class="h-40 relative">
+                            <img src="${news.images[0]}" alt="${news.title}" class="w-full h-full object-cover">
+                            ${news.images.length > 1 ? `
+                                <div class="absolute top-2 right-2 bg-black bg-opacity-70 text-white px-2 py-1 rounded text-xs">
+                                    +${news.images.length - 1} foto
+                                </div>
+                            ` : ''}
+                        </div>
+                    ` : `
+                        <div class="h-40 bg-gradient-to-r ${news.gradient} flex items-center justify-center">
+                            <i class="${news.icon} text-white text-3xl"></i>
+                        </div>
+                    `}
+                    <div class="p-4">
+                        <span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs">${news.category}</span>
+                        <h3 class="font-bold mt-2">${news.title}</h3>
+                        <p class="text-gray-600 text-sm mt-2">${news.excerpt}</p>
+                        <div class="flex items-center mt-3 text-gray-500 text-xs">
+                            <i class="far fa-clock mr-1"></i>
+                            <span>${news.time}</span>
+                            <i class="far fa-eye ml-4 mr-1"></i>
+                            <span>${news.views}</span>
+                        </div>
+                    </div>
+                </article>
+            `).join('');
+        }
+
+        // Live button functionality
+        const liveButton = document.querySelector('.bg-red-600');
+        if (liveButton) {
+            liveButton.addEventListener('click', function() {
+                alert('Streaming langsung akan segera dimulai!');
+            });
+        }
+
+        // Function to show article page
+        window.showArticlePage = function(title, newsId = 0) {
+            // Find the news item
+            let newsItem = null;
+            
+            // Search in admin news first
+            if (newsId) {
+                newsItem = adminNews.find(news => news.id == newsId);
+            }
+            
+            // If not found, search in regular news database
+            if (!newsItem) {
+                const allNews = Object.values(newsDatabase).flat();
+                newsItem = allNews.find(news => news.title === title || news.id == newsId);
+            }
+            
+            // Generate content if not available
+            let content = '';
+            if (newsItem && newsItem.content) {
+                content = newsItem.content;
+            } else if (newsItem) {
+                content = generateDefaultContent(newsItem.title, newsItem.excerpt);
+            } else {
+                content = `Jakarta - ${title} menjadi sorotan utama hari ini. Berbagai pihak memberikan respons positif terhadap perkembangan ini yang diharapkan dapat membawa dampak baik bagi masyarakat Indonesia.
+                
+                Menurut sumber terpercaya, langkah ini merupakan bagian dari upaya berkelanjutan untuk meningkatkan kesejahteraan rakyat. Implementasi kebijakan ini akan dilakukan secara bertahap dengan melibatkan berbagai stakeholder terkait.
+                
+                "Kami berkomitmen untuk terus memberikan yang terbaik bagi bangsa dan negara," ujar salah satu pejabat terkait dalam konferensi pers yang diselenggarakan hari ini.
+                
+                Ke depannya, diharapkan inisiatif ini dapat menjadi contoh baik dan dapat direplikasi di berbagai daerah lainnya untuk mencapai tujuan pembangunan nasional yang berkelanjutan.`;
+            }
+            
+            const author = newsItem ? (newsItem.author || 'Tim Redaksi') : 'Tim Redaksi';
+            const images = newsItem ? newsItem.images : [];
+            const newsUrl = generateNewsUrl(title, newsId);
+            
+            const articleContent = `
+                <div class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-2 sm:p-4">
+                    <div class="bg-white rounded-lg max-w-4xl w-full max-h-[95vh] sm:max-h-[90vh] overflow-y-auto">
+                        <div class="p-4 sm:p-6">
+                            <div class="flex justify-between items-start mb-4">
+                                <h1 class="text-lg sm:text-xl lg:text-2xl font-bold text-gray-800 pr-4">${title}</h1>
+                                <button onclick="closeArticle()" class="text-gray-500 hover:text-gray-700 text-2xl flex-shrink-0">&times;</button>
+                            </div>
+                            <div class="flex flex-col sm:flex-row sm:items-center text-sm text-gray-500 mb-4 space-y-1 sm:space-y-0">
+                                <span><i class="far fa-clock mr-1"></i> ${newsItem ? newsItem.time : Math.floor(Math.random() * 12) + 1 + ' jam yang lalu'}</span>
+                                <span class="hidden sm:inline mx-2">•</span>
+                                <span><i class="far fa-user mr-1"></i> ${author}</span>
+                                <span class="hidden sm:inline mx-2">•</span>
+                                <span><i class="far fa-eye mr-1"></i> ${newsItem ? newsItem.views : Math.floor(Math.random() * 2000) + 500} views</span>
+                            </div>
+                            
+                            <!-- Share URL Display -->
+                            <div class="bg-gray-50 p-3 rounded-lg mb-4">
+                                <div class="flex items-center justify-between">
+                                    <div class="flex-1">
+                                        <p class="text-xs text-gray-500 mb-1">Link Berita:</p>
+                                        <p class="text-sm text-blue-600 break-all" id="newsUrl">${newsUrl}</p>
+                                    </div>
+                                    <button onclick="copyNewsUrl('${newsUrl}')" class="ml-2 bg-blue-600 text-white px-3 py-1 rounded text-xs hover:bg-blue-700">
+                                        <i class="fas fa-copy mr-1"></i>Salin
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            ${images && images.length > 0 ? `
+                                <div class="mb-4 sm:mb-6">
+                                    <img src="${images[0]}" alt="${title}" class="w-full h-48 sm:h-64 object-cover rounded-lg">
+                                    ${images.length > 1 ? `
+                                        <div class="grid grid-cols-3 gap-2 mt-2">
+                                            ${images.slice(1, 4).map(img => `
+                                                <img src="${img}" alt="Additional image" class="w-full h-20 object-cover rounded cursor-pointer" onclick="showImageModal('${img}')">
+                                            `).join('')}
+                                        </div>
+                                    ` : ''}
+                                </div>
+                            ` : `
+                                <div class="h-48 sm:h-64 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg mb-4 sm:mb-6 flex items-center justify-center">
+                                    <i class="fas fa-image text-white text-3xl sm:text-4xl"></i>
+                                </div>
+                            `}
+                            
+                            <div class="prose max-w-none text-sm sm:text-base">
+                                ${content.split('\n').map(paragraph => 
+                                    paragraph.trim() ? `<p class="text-gray-700 leading-relaxed mb-4">${paragraph.trim()}</p>` : ''
+                                ).join('')}
+                            </div>
+                            <div class="mt-4 sm:mt-6 pt-4 sm:pt-6 border-t">
+                                <h3 class="font-bold mb-3">Bagikan Artikel:</h3>
+                                <div class="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+                                    <a href="#" onclick="shareToFacebook('${title.replace(/'/g, "\\'")}', '${newsUrl}')" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-center text-sm">
+                                        <i class="fab fa-facebook mr-2"></i>Facebook
+                                    </a>
+                                    <a href="#" onclick="shareToTwitter('${title.replace(/'/g, "\\'")}', '${newsUrl}')" class="bg-blue-400 text-white px-4 py-2 rounded hover:bg-blue-500 text-center text-sm">
+                                        <i class="fab fa-twitter mr-2"></i>Twitter
+                                    </a>
+                                    <a href="#" onclick="shareToWhatsApp('${title.replace(/'/g, "\\'")}', '${newsUrl}')" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-center text-sm">
+                                        <i class="fab fa-whatsapp mr-2"></i>WhatsApp
+                                    </a>
+                                    <button onclick="copyNewsUrl('${newsUrl}')" class="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700 text-center text-sm">
+                                        <i class="fas fa-link mr-2"></i>Salin Link
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.insertAdjacentHTML('beforeend', articleContent);
+        }
+
+        // Generate unique URL for news
+        function generateNewsUrl(title, newsId) {
+            const baseUrl = window.location.origin + window.location.pathname;
+            const slug = title.toLowerCase()
+                .replace(/[^a-z0-9\s]/g, '')
+                .replace(/\s+/g, '-')
+                .substring(0, 50);
+            return `${baseUrl}?news=${encodeURIComponent(slug)}&id=${newsId}`;
+        }
+
+        // Copy news URL function
+        window.copyNewsUrl = function(url) {
+            navigator.clipboard.writeText(url).then(() => {
+                alert('Link berita berhasil disalin!');
+            }).catch(() => {
+                // Fallback for older browsers
+                const textArea = document.createElement('textarea');
+                textArea.value = url;
+                document.body.appendChild(textArea);
+                textArea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textArea);
+                alert('Link berita berhasil disalin!');
+            });
+        }
+
+        // Share functions
+        window.shareToFacebook = function(title, url) {
+            const shareUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}&quote=${encodeURIComponent(title)}`;
+            window.open(shareUrl, '_blank', 'width=600,height=400');
+        }
+
+        window.shareToTwitter = function(title, url) {
+            const shareUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(title)}&url=${encodeURIComponent(url)}`;
+            window.open(shareUrl, '_blank', 'width=600,height=400');
+        }
+
+        window.shareToWhatsApp = function(title, url) {
+            const shareUrl = `https://wa.me/?text=${encodeURIComponent(title + ' - ' + url)}`;
+            window.open(shareUrl, '_blank');
+        }
+
+        window.copyLink = function(title, url) {
+            copyNewsUrl(url);
+        }
+
+        window.showImageModal = function(imageSrc) {
+            const modal = `
+                <div class="fixed inset-0 bg-black bg-opacity-75 z-60 flex items-center justify-center p-4" onclick="this.remove()">
+                    <img src="${imageSrc}" alt="Full size image" class="max-w-full max-h-full object-contain">
+                </div>
+            `;
+            document.body.insertAdjacentHTML('beforeend', modal);
+        }
+
+        // Function to close article
+        window.closeArticle = function() {
+            const modal = document.querySelector('.fixed.inset-0.bg-black');
+            if (modal) {
+                modal.remove();
+            }
+        }
+    </script>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95e02ae5f28b880d',t:'MTc1MjMxOTM5Ny4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

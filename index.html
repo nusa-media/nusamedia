@@ -400,9 +400,14 @@
                             <pre id="gasCode">// Google Apps Script Code akan ditampilkan di sini
 // Klik tombol "Tampilkan Kode" untuk melihat</pre>
                         </div>
-                        <button onclick="showGASCode()" class="mt-2 bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">
-                            <i class="fas fa-code mr-2"></i>Tampilkan Kode Google Apps Script
-                        </button>
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            <button onclick="showGASCode()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">
+                                <i class="fas fa-code mr-2"></i>Tampilkan Kode Google Apps Script
+                            </button>
+                            <button onclick="testConnection()" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700 text-sm">
+                                <i class="fas fa-wifi mr-2"></i>Test Koneksi
+                            </button>
+                        </div>
                     </div>
                     
                     <div>
@@ -419,8 +424,40 @@
                     <div class="bg-yellow-50 border border-yellow-200 rounded p-3">
                         <p class="text-yellow-800 text-sm">
                             <i class="fas fa-exclamation-triangle mr-2"></i>
-                            <strong>Penting:</strong> Ganti <code>YOUR_SCRIPT_ID</code> di line 707 dengan ID Google Apps Script Anda
+                            <strong>Penting:</strong> Ganti <code>YOUR_SCRIPT_ID</code> di line 762 dengan ID Google Apps Script Anda
                         </p>
+                    </div>
+                    
+                    <!-- Troubleshooting Section -->
+                    <div class="bg-red-50 border border-red-200 rounded p-4 mt-4">
+                        <h3 class="font-semibold text-red-700 mb-2">🔧 Troubleshooting - Jika Sinkronisasi Gagal:</h3>
+                        <div class="text-red-600 space-y-2 text-xs">
+                            <div>
+                                <strong>❌ Problem: "YOUR_SCRIPT_ID belum diganti"</strong>
+                                <p>• Buka kode website, cari line 762</p>
+                                <p>• Ganti YOUR_SCRIPT_ID dengan ID dari URL deployment Anda</p>
+                            </div>
+                            
+                            <div>
+                                <strong>❌ Problem: "Failed to fetch" atau "CORS error"</strong>
+                                <p>• Pastikan Google Apps Script sudah di-deploy dengan benar</p>
+                                <p>• Pastikan "Who has access" = Anyone (bukan "Only myself")</p>
+                                <p>• Coba deploy ulang dengan versi baru</p>
+                            </div>
+                            
+                            <div>
+                                <strong>❌ Problem: "404 Not Found"</strong>
+                                <p>• ID Script salah atau belum di-deploy</p>
+                                <p>• Pastikan menggunakan Web App URL, bukan Script URL</p>
+                            </div>
+                            
+                            <div>
+                                <strong>✅ Cara Mendapatkan ID Script yang Benar:</strong>
+                                <p>• Setelah deploy, copy Web App URL</p>
+                                <p>• Contoh: https://script.google.com/macros/s/<strong>AKfycbx...</strong>/exec</p>
+                                <p>• Bagian <strong>AKfycbx...</strong> adalah ID yang harus digunakan</p>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -761,6 +798,16 @@
         // Google Apps Script API Configuration
         const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwzDQ8rmI3J3HmTPO74JRPjJSzJsnBqP_Hyjyhv94Z8SpSp4cO4NJF5K5Gui_AzHRsh/exec';
         let isOnlineMode = false;
+        
+        // Debug function to check configuration
+        function checkConfiguration() {
+            console.log('Current Google Script URL:', GOOGLE_SCRIPT_URL);
+            if (GOOGLE_SCRIPT_URL.includes('https://script.google.com/macros/s/AKfycbwzDQ8rmI3J3HmTPO74JRPjJSzJsnBqP_Hyjyhv94Z8SpSp4cO4NJF5K5Gui_AzHRsh/exec')) {
+                alert('⚠️ PENTING: Anda belum mengganti YOUR_SCRIPT_ID dengan ID Google Apps Script yang sebenarnya!\n\nSilakan ikuti langkah setup di bagian "Setup Google Sheets Database"');
+                return false;
+            }
+            return true;
+        }
 
         // News database
         const newsDatabase = {
@@ -1853,6 +1900,11 @@ Ke depannya, diharapkan inisiatif ini dapat menjadi contoh baik dan dapat direpl
 
         // Manual sync function
         window.syncData = async function() {
+            // Check if configuration is complete
+            if (!checkConfiguration()) {
+                return;
+            }
+            
             const syncBtn = document.getElementById('syncBtn');
             const originalText = syncBtn.innerHTML;
             
@@ -1860,34 +1912,65 @@ Ke depannya, diharapkan inisiatif ini dapat menjadi contoh baik dan dapat direpl
             syncBtn.disabled = true;
             
             try {
+                console.log('Attempting to connect to:', GOOGLE_SCRIPT_URL);
+                
                 // Try to reconnect to Google Sheets
                 const response = await fetch(GOOGLE_SCRIPT_URL + '?action=test', {
                     method: 'GET',
                     mode: 'cors'
                 });
                 
+                console.log('Response status:', response.status);
+                console.log('Response ok:', response.ok);
+                
                 if (response.ok) {
+                    const testData = await response.json();
+                    console.log('Test response:', testData);
+                    
                     isOnlineMode = true;
                     
                     // Sync local data to Google Sheets
                     const localNews = JSON.parse(localStorage.getItem('adminNews')) || [];
+                    console.log('Local news to sync:', localNews.length);
                     
-                    for (const news of localNews) {
-                        await saveNewsToGoogleSheets(news);
+                    if (localNews.length > 0) {
+                        for (const news of localNews) {
+                            console.log('Syncing news:', news.title);
+                            await saveNewsToGoogleSheets(news);
+                        }
                     }
                     
                     // Load updated data from Google Sheets
                     await loadNewsFromGoogleSheets();
                     
-                    alert('Sinkronisasi berhasil! Data telah diperbarui dari Google Sheets.');
+                    alert('✅ Sinkronisasi berhasil! Data telah diperbarui dari Google Sheets.');
                     displayAdminNews();
                     updateAdminStats();
                 } else {
-                    throw new Error('Cannot connect to Google Sheets');
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
             } catch (error) {
                 console.error('Sync failed:', error);
-                alert('Sinkronisasi gagal. Pastikan koneksi internet dan Google Apps Script berfungsi dengan baik.');
+                
+                let errorMessage = 'Sinkronisasi gagal!\n\n';
+                
+                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                    errorMessage += '❌ Masalah koneksi internet atau CORS.\n\n';
+                    errorMessage += 'Solusi:\n';
+                    errorMessage += '1. Pastikan koneksi internet stabil\n';
+                    errorMessage += '2. Pastikan Google Apps Script sudah di-deploy dengan benar\n';
+                    errorMessage += '3. Pastikan pengaturan "Who has access" = Anyone';
+                } else if (error.message.includes('404')) {
+                    errorMessage += '❌ Google Apps Script tidak ditemukan.\n\n';
+                    errorMessage += 'Pastikan:\n';
+                    errorMessage += '1. ID Script sudah benar\n';
+                    errorMessage += '2. Script sudah di-deploy sebagai Web App';
+                } else {
+                    errorMessage += `❌ Error: ${error.message}\n\n`;
+                    errorMessage += 'Periksa console browser untuk detail lebih lanjut.';
+                }
+                
+                alert(errorMessage);
             } finally {
                 syncBtn.innerHTML = originalText;
                 syncBtn.disabled = false;
@@ -2157,6 +2240,67 @@ Ke depannya, diharapkan inisiatif ini dapat menjadi contoh baik dan dapat direpl
             }
         }
 
+        // Test connection function
+        window.testConnection = async function() {
+            if (!checkConfiguration()) {
+                return;
+            }
+            
+            const testBtn = event.target;
+            const originalText = testBtn.innerHTML;
+            testBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Testing...';
+            testBtn.disabled = true;
+            
+            try {
+                console.log('Testing connection to:', GOOGLE_SCRIPT_URL);
+                
+                const response = await fetch(GOOGLE_SCRIPT_URL + '?action=test', {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+                
+                console.log('Test response status:', response.status);
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    console.log('Test response data:', data);
+                    
+                    alert('✅ Koneksi berhasil!\n\nGoogle Apps Script dapat diakses dengan baik.\nAnda dapat melakukan sinkronisasi data.');
+                    
+                    // Update connection status
+                    isOnlineMode = true;
+                    updateConnectionStatus();
+                } else {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+            } catch (error) {
+                console.error('Connection test failed:', error);
+                
+                let errorMessage = '❌ Test koneksi gagal!\n\n';
+                
+                if (error.message.includes('Failed to fetch')) {
+                    errorMessage += 'Kemungkinan penyebab:\n';
+                    errorMessage += '• Google Apps Script belum di-deploy\n';
+                    errorMessage += '• Pengaturan "Who has access" bukan "Anyone"\n';
+                    errorMessage += '• ID Script salah\n';
+                    errorMessage += '• Masalah koneksi internet';
+                } else if (error.message.includes('404')) {
+                    errorMessage += 'Google Apps Script tidak ditemukan.\n';
+                    errorMessage += 'Pastikan ID Script sudah benar dan sudah di-deploy.';
+                } else {
+                    errorMessage += `Error: ${error.message}`;
+                }
+                
+                alert(errorMessage);
+                
+                isOnlineMode = false;
+                updateConnectionStatus();
+            } finally {
+                testBtn.innerHTML = originalText;
+                testBtn.disabled = false;
+            }
+        }
+
         // Show Google Apps Script code
         window.showGASCode = function() {
             const gasCode = `function doGet(e) {
@@ -2380,5 +2524,5 @@ function getCategoryGradient(category) {
             codeContainer.appendChild(copyBtn);
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95ee2e36b637fe00',t:'MTc1MjQ2NjMzMy4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95ee6280c7e549c6',t:'MTc1MjQ2ODQ3NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>

@@ -427,13 +427,36 @@
                         </p>
                     </div>
                     
+                    <!-- Debug Information -->
+                    <div class="bg-blue-50 border border-blue-200 rounded p-4 mt-4">
+                        <h3 class="font-semibold text-blue-700 mb-2">🔍 Debug Information:</h3>
+                        <div class="text-blue-600 space-y-2 text-xs">
+                            <div>
+                                <strong>Current Script URL:</strong>
+                                <p class="font-mono bg-white p-2 rounded mt-1 break-all" id="currentScriptUrl">Loading...</p>
+                            </div>
+                            <div>
+                                <strong>Connection Status:</strong>
+                                <p id="debugConnectionStatus">Checking...</p>
+                            </div>
+                            <div>
+                                <strong>Local News Count:</strong>
+                                <p id="debugLocalNewsCount">Loading...</p>
+                            </div>
+                            <div>
+                                <strong>Last Sync Attempt:</strong>
+                                <p id="debugLastSync">Never</p>
+                            </div>
+                        </div>
+                    </div>
+                    
                     <!-- Troubleshooting Section -->
                     <div class="bg-red-50 border border-red-200 rounded p-4 mt-4">
                         <h3 class="font-semibold text-red-700 mb-2">🔧 Troubleshooting - Jika Sinkronisasi Gagal:</h3>
                         <div class="text-red-600 space-y-2 text-xs">
                             <div>
                                 <strong>❌ Problem: "YOUR_SCRIPT_ID belum diganti"</strong>
-                                <p>• Buka kode website, cari line 762</p>
+                                <p>• Script URL masih menggunakan placeholder</p>
                                 <p>• Ganti YOUR_SCRIPT_ID dengan ID dari URL deployment Anda</p>
                             </div>
                             
@@ -455,6 +478,14 @@
                                 <p>• Setelah deploy, copy Web App URL</p>
                                 <p>• Contoh: https://script.google.com/macros/s/<strong>AKfycbx...</strong>/exec</p>
                                 <p>• Bagian <strong>AKfycbx...</strong> adalah ID yang harus digunakan</p>
+                            </div>
+                            
+                            <div>
+                                <strong>🔧 Langkah Debugging:</strong>
+                                <p>1. Buka Console Browser (F12)</p>
+                                <p>2. Lihat error message yang muncul</p>
+                                <p>3. Coba tambah berita dan lihat log</p>
+                                <p>4. Coba klik tombol "Test Koneksi"</p>
                             </div>
                         </div>
                     </div>
@@ -795,7 +826,7 @@
         let editingNewsId = null;
         
         // Google Apps Script API Configuration
-        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwzDQ8rmI3J3HmTPO74JRPjJSzJsnBqP_Hyjyhv94Z8SpSp4cO4NJF5K5Gui_AzHRsh/exec';
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/YOUR_SCRIPT_ID/exec';
         let isOnlineMode = false;
         
         // Debug function to check configuration
@@ -996,18 +1027,26 @@
 
         // Initialize data source (Google Sheets or localStorage)
         async function initializeDataSource() {
+            console.log('🔍 Initializing data source...');
+            
+            // Always load from localStorage first for instant display
+            loadAdminNews();
+            console.log('📱 Loaded from localStorage:', adminNews.length, 'items');
+            
+            // Check if Google Sheets is configured
+            if (GOOGLE_SCRIPT_URL.includes('YOUR_SCRIPT_ID')) {
+                console.log('⚠️ Google Script URL not configured - using offline mode only');
+                isOnlineMode = false;
+                updateConnectionStatus();
+                return;
+            }
+            
             try {
                 console.log('🔍 Testing connection to:', GOOGLE_SCRIPT_URL);
                 
-                // Check if URL is properly configured
-                if (GOOGLE_SCRIPT_URL.includes('YOUR_SCRIPT_ID')) {
-                    console.log('⚠️ Google Script URL not configured properly');
-                    throw new Error('Google Script URL not configured');
-                }
-                
                 // Test connection to Google Apps Script with timeout
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+                const timeoutId = setTimeout(() => controller.abort(), 8000); // 8 second timeout
                 
                 const response = await fetch(GOOGLE_SCRIPT_URL + '?action=test', {
                     method: 'GET',
@@ -1020,29 +1059,33 @@
                 });
                 
                 clearTimeout(timeoutId);
-                console.log('📡 Initial test response:', response.status, response.ok);
+                console.log('📡 Test response:', response.status, response.ok);
                 
                 if (response.ok) {
                     const testResult = await response.json();
-                    console.log('✅ Test result:', testResult);
+                    console.log('✅ Google Sheets connection successful:', testResult);
                     
                     isOnlineMode = true;
-                    console.log('🌐 Connected to Google Sheets database');
-                    await loadNewsFromGoogleSheets();
+                    console.log('🌐 Switching to online mode');
+                    
+                    // Try to load from Google Sheets
+                    const loadSuccess = await loadNewsFromGoogleSheets();
+                    if (!loadSuccess) {
+                        console.log('⚠️ Failed to load from Google Sheets, keeping localStorage data');
+                    }
                 } else {
-                    const errorText = await response.text();
-                    console.log('❌ Response error:', errorText);
-                    throw new Error(`Google Sheets not accessible: ${response.status} - ${errorText}`);
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
                 }
             } catch (error) {
-                console.log('❌ Connection failed:', error.message);
-                console.log('📱 Using offline mode with localStorage');
+                console.log('❌ Google Sheets connection failed:', error.message);
+                console.log('📱 Continuing with offline mode');
                 isOnlineMode = false;
-                loadAdminNews();
             }
             
-            // Always update connection status
+            // Always update connection status and displays
             updateConnectionStatus();
+            updateAdminStats();
+            displayAdminNews();
         }
 
         // Load news from Google Sheets
@@ -1131,18 +1174,37 @@
 
         // Save news to Google Sheets
         async function saveNewsToGoogleSheets(newsData) {
+            if (!isOnlineMode) {
+                console.log('📱 Offline mode - skipping Google Sheets save');
+                return false;
+            }
+            
             try {
-                console.log('💾 Saving news to Google Sheets:', newsData.title);
-                console.log('📊 News data:', {
+                console.log('💾 Saving to Google Sheets:', newsData.title);
+                
+                // Prepare clean data for Google Sheets
+                const cleanData = {
                     id: newsData.id,
                     title: newsData.title,
                     category: newsData.category,
-                    author: newsData.author,
-                    hasImages: newsData.images ? newsData.images.length : 0
+                    author: newsData.author || 'Tim Redaksi',
+                    excerpt: newsData.excerpt || '',
+                    content: newsData.content || '',
+                    images: newsData.images || [],
+                    date: newsData.date || new Date().toISOString(),
+                    time: newsData.time || 'Baru saja',
+                    views: newsData.views || '0'
+                };
+                
+                console.log('📊 Sending data:', {
+                    id: cleanData.id,
+                    title: cleanData.title,
+                    category: cleanData.category,
+                    imagesCount: cleanData.images.length
                 });
                 
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+                const timeoutId = setTimeout(() => controller.abort(), 20000); // 20 second timeout
                 
                 const response = await fetch(GOOGLE_SCRIPT_URL, {
                     method: 'POST',
@@ -1154,37 +1216,38 @@
                     },
                     body: JSON.stringify({
                         action: 'addNews',
-                        data: newsData
+                        data: cleanData
                     })
                 });
                 
                 clearTimeout(timeoutId);
-                console.log('📡 Save response status:', response.status, 'OK:', response.ok);
+                console.log('📡 Response:', response.status, response.statusText);
                 
                 if (response.ok) {
                     const result = await response.json();
-                    console.log('✅ Save result:', result);
+                    console.log('📋 Result:', result);
                     
                     if (result.success) {
-                        console.log('🎉 Successfully saved to Google Sheets');
+                        console.log('✅ Successfully saved to Google Sheets');
                         return true;
                     } else {
-                        console.error('❌ Google Sheets returned success: false', result.error);
-                        throw new Error(result.error || 'Unknown error from Google Sheets');
+                        console.error('❌ Google Sheets error:', result.error);
+                        throw new Error(result.error || 'Google Sheets returned success: false');
                     }
                 } else {
                     const errorText = await response.text();
-                    console.error('❌ Save error response:', errorText);
-                    throw new Error(`Failed to save to Google Sheets: ${response.status} - ${errorText}`);
+                    console.error('❌ HTTP Error:', response.status, errorText);
+                    throw new Error(`HTTP ${response.status}: ${errorText}`);
                 }
             } catch (error) {
-                console.error('💥 Error saving to Google Sheets:', error);
+                console.error('💥 Save error:', error.message);
                 
-                // Check if it's a network error
                 if (error.name === 'AbortError') {
-                    console.error('⏰ Request timed out');
+                    console.error('⏰ Request timeout (20 seconds)');
                 } else if (error.message.includes('Failed to fetch')) {
-                    console.error('🌐 Network connection error');
+                    console.error('🌐 Network/CORS error');
+                } else if (error.message.includes('NetworkError')) {
+                    console.error('🌐 Network connection failed');
                 }
                 
                 return false;
@@ -1421,11 +1484,17 @@
         async function addNews(event) {
             event.preventDefault();
             
-            const title = document.getElementById('newsTitle').value;
+            const title = document.getElementById('newsTitle').value.trim();
             const category = document.getElementById('newsCategory').value;
-            const author = document.getElementById('newsAuthor').value || 'Tim Redaksi';
-            const excerpt = document.getElementById('newsExcerpt').value || title.substring(0, 100) + '...';
-            const content = document.getElementById('newsContent').value;
+            const author = document.getElementById('newsAuthor').value.trim() || 'Tim Redaksi';
+            const excerpt = document.getElementById('newsExcerpt').value.trim() || title.substring(0, 100) + '...';
+            const content = document.getElementById('newsContent').value.trim();
+            
+            // Validation
+            if (!title || !category || !content) {
+                alert('❌ Mohon lengkapi semua field yang wajib diisi!');
+                return;
+            }
             
             const newNews = {
                 id: Date.now(),
@@ -1436,7 +1505,7 @@
                 author: author,
                 time: 'Baru saja',
                 views: '0',
-                images: selectedImages,
+                images: [...selectedImages], // Create copy of array
                 date: new Date().toISOString(),
                 icon: getCategoryIcon(category),
                 gradient: getCategoryGradient(category)
@@ -1449,73 +1518,92 @@
             submitBtn.disabled = true;
             
             try {
-                console.log('📝 Adding new news:', newNews.title);
-                console.log('🌐 Online mode:', isOnlineMode);
+                console.log('📝 Adding news:', newNews.title);
+                console.log('📊 News data:', {
+                    id: newNews.id,
+                    title: newNews.title,
+                    category: newNews.category,
+                    contentLength: newNews.content.length,
+                    imagesCount: newNews.images.length
+                });
                 
-                // Always save to localStorage first for instant display
+                // Step 1: Always save to localStorage first (instant display)
                 adminNews.unshift(newNews);
                 localStorage.setItem('adminNews', JSON.stringify(adminNews));
-                console.log('💾 Saved to localStorage');
+                console.log('💾 ✅ Saved to localStorage');
                 
-                if (isOnlineMode) {
-                    console.log('☁️ Attempting to save to Google Sheets...');
-                    // Try to save to Google Sheets
-                    const success = await saveNewsToGoogleSheets(newNews);
-                    if (success) {
-                        console.log('✅ Successfully saved to Google Sheets');
-                        
-                        // Reload from Google Sheets to ensure sync
-                        setTimeout(async () => {
-                            console.log('🔄 Reloading from Google Sheets...');
-                            await loadNewsFromGoogleSheets();
-                            displayAdminNews();
-                            updateAdminStats();
-                        }, 1000);
-                        
-                        alert('✅ Berita berhasil ditambahkan dan disinkronkan ke Google Sheets!');
-                    } else {
-                        console.log('❌ Failed to save to Google Sheets, keeping in localStorage');
-                        alert('⚠️ Berita disimpan secara lokal. Gunakan tombol Sinkronisasi untuk upload ke Google Sheets.');
-                    }
-                } else {
-                    console.log('📱 Offline mode - saved to localStorage only');
-                    updateMainNewsDatabase();
-                    alert('📱 Berita berhasil ditambahkan (mode offline)!\n\nGunakan tombol Sinkronisasi untuk upload ke Google Sheets saat koneksi tersedia.');
-                }
-                
-                resetForm();
-                updateAdminStats();
+                // Step 2: Update displays immediately
+                updateMainNewsDatabase();
                 displayAdminNews();
+                updateAdminStats();
                 
-                // Update main website display if visible
+                // Update main website if visible
                 const mainWebsite = document.getElementById('mainWebsite');
                 if (mainWebsite && !mainWebsite.classList.contains('hidden')) {
                     showAllNews();
                 }
+                
+                // Step 3: Try Google Sheets if online
+                let syncMessage = '';
+                if (isOnlineMode) {
+                    console.log('☁️ Attempting Google Sheets sync...');
+                    localStorage.setItem('lastSyncAttempt', new Date().toISOString());
+                    
+                    const syncSuccess = await saveNewsToGoogleSheets(newNews);
+                    
+                    if (syncSuccess) {
+                        console.log('✅ Google Sheets sync successful');
+                        localStorage.setItem('lastSuccessfulSync', new Date().toISOString());
+                        syncMessage = '✅ Berita berhasil ditambahkan dan disinkronkan ke Google Sheets!';
+                        
+                        // Optional: Reload from Google Sheets after delay
+                        setTimeout(async () => {
+                            console.log('🔄 Refreshing from Google Sheets...');
+                            await loadNewsFromGoogleSheets();
+                            displayAdminNews();
+                            updateAdminStats();
+                        }, 2000);
+                    } else {
+                        console.log('❌ Google Sheets sync failed');
+                        syncMessage = '⚠️ Berita berhasil ditambahkan secara lokal.\nGunakan tombol "Sinkronisasi" untuk upload ke Google Sheets.';
+                    }
+                } else {
+                    console.log('📱 Offline mode - localStorage only');
+                    syncMessage = '📱 Berita berhasil ditambahkan (mode offline)!\n\nGunakan tombol "Sinkronisasi" untuk upload ke Google Sheets saat koneksi tersedia.';
+                }
+                
+                // Step 4: Show success message and reset form
+                alert(syncMessage);
+                resetForm();
+                
+                console.log('✅ Add news completed successfully');
                 
             } catch (error) {
                 console.error('💥 Error in addNews:', error);
                 
                 // Ensure news is saved locally even if there's an error
-                if (!adminNews.find(n => n.id === newNews.id)) {
+                const existingIndex = adminNews.findIndex(n => n.id === newNews.id);
+                if (existingIndex === -1) {
                     adminNews.unshift(newNews);
                     localStorage.setItem('adminNews', JSON.stringify(adminNews));
+                    console.log('🔧 Fallback: Saved to localStorage');
                 }
                 
                 updateMainNewsDatabase();
-                alert('⚠️ Berita disimpan secara lokal. Gunakan tombol Sinkronisasi untuk upload ke Google Sheets.');
-                
-                resetForm();
-                updateAdminStats();
                 displayAdminNews();
+                updateAdminStats();
                 
-                // Update main website display if visible
+                // Update main website if visible
                 const mainWebsite = document.getElementById('mainWebsite');
                 if (mainWebsite && !mainWebsite.classList.contains('hidden')) {
                     showAllNews();
                 }
+                
+                alert('⚠️ Berita berhasil disimpan secara lokal.\nGunakan tombol "Sinkronisasi" untuk upload ke Google Sheets.');
+                resetForm();
+                
             } finally {
-                // Restore button state
+                // Always restore button state
                 submitBtn.innerHTML = originalText;
                 submitBtn.disabled = false;
             }
@@ -2104,6 +2192,46 @@ Ke depannya, diharapkan inisiatif ini dapat menjadi contoh baik dan dapat direpl
                     statusText.className = 'text-yellow-600';
                 }
             }
+            
+            // Update debug information
+            updateDebugInfo();
+        }
+        
+        // Update debug information
+        function updateDebugInfo() {
+            const currentScriptUrl = document.getElementById('currentScriptUrl');
+            const debugConnectionStatus = document.getElementById('debugConnectionStatus');
+            const debugLocalNewsCount = document.getElementById('debugLocalNewsCount');
+            const debugLastSync = document.getElementById('debugLastSync');
+            
+            if (currentScriptUrl) {
+                currentScriptUrl.textContent = GOOGLE_SCRIPT_URL;
+                if (GOOGLE_SCRIPT_URL.includes('YOUR_SCRIPT_ID')) {
+                    currentScriptUrl.className = 'font-mono bg-red-100 p-2 rounded mt-1 break-all text-red-600';
+                } else {
+                    currentScriptUrl.className = 'font-mono bg-white p-2 rounded mt-1 break-all';
+                }
+            }
+            
+            if (debugConnectionStatus) {
+                debugConnectionStatus.textContent = isOnlineMode ? 
+                    '✅ Online - Connected to Google Sheets' : 
+                    '📱 Offline - Using localStorage only';
+            }
+            
+            if (debugLocalNewsCount) {
+                const localCount = JSON.parse(localStorage.getItem('adminNews') || '[]').length;
+                debugLocalNewsCount.textContent = `${localCount} berita tersimpan lokal`;
+            }
+            
+            if (debugLastSync) {
+                const lastSync = localStorage.getItem('lastSyncAttempt');
+                if (lastSync) {
+                    debugLastSync.textContent = new Date(lastSync).toLocaleString('id-ID');
+                } else {
+                    debugLastSync.textContent = 'Belum pernah sync';
+                }
+            }
         }
 
         // Manual sync function
@@ -2120,14 +2248,14 @@ Ke depannya, diharapkan inisiatif ini dapat menjadi contoh baik dan dapat direpl
             syncBtn.disabled = true;
             
             try {
-                console.log('🔄 Starting synchronization process...');
-                console.log('🔗 Attempting to connect to:', GOOGLE_SCRIPT_URL);
+                console.log('🔄 Starting manual synchronization...');
+                console.log('🔗 Testing connection to:', GOOGLE_SCRIPT_URL);
                 
-                // Try to reconnect to Google Sheets with timeout
+                // Test connection first
                 const controller = new AbortController();
-                const timeoutId = setTimeout(() => controller.abort(), 10000);
+                const timeoutId = setTimeout(() => controller.abort(), 12000); // 12 second timeout
                 
-                const response = await fetch(GOOGLE_SCRIPT_URL + '?action=test', {
+                const testResponse = await fetch(GOOGLE_SCRIPT_URL + '?action=test', {
                     method: 'GET',
                     mode: 'cors',
                     signal: controller.signal,
@@ -2138,127 +2266,146 @@ Ke depannya, diharapkan inisiatif ini dapat menjadi contoh baik dan dapat direpl
                 });
                 
                 clearTimeout(timeoutId);
-                console.log('📡 Response status:', response.status, 'OK:', response.ok);
+                console.log('📡 Test response:', testResponse.status, testResponse.ok);
                 
-                if (response.ok) {
-                    const testData = await response.json();
-                    console.log('✅ Test response:', testData);
-                    
-                    isOnlineMode = true;
-                    console.log('🌐 Connection established, switching to online mode');
-                    
-                    // Get local news that need to be synced
-                    const localNews = JSON.parse(localStorage.getItem('adminNews')) || [];
-                    console.log('📊 Local news to sync:', localNews.length);
-                    
-                    // Sync each local news to Google Sheets
-                    let syncedCount = 0;
-                    let failedCount = 0;
-                    
-                    if (localNews.length > 0) {
-                        console.log('📤 Uploading local news to Google Sheets...');
-                        
-                        for (let i = 0; i < localNews.length; i++) {
-                            const news = localNews[i];
-                            console.log(`📝 Syncing ${i + 1}/${localNews.length}: ${news.title}`);
-                            
-                            try {
-                                const success = await saveNewsToGoogleSheets(news);
-                                if (success) {
-                                    syncedCount++;
-                                    console.log(`✅ Synced: ${news.title}`);
-                                } else {
-                                    failedCount++;
-                                    console.log(`❌ Failed to sync: ${news.title}`);
-                                }
-                                
-                                // Add small delay between requests to avoid rate limiting
-                                if (i < localNews.length - 1) {
-                                    await new Promise(resolve => setTimeout(resolve, 500));
-                                }
-                            } catch (error) {
-                                failedCount++;
-                                console.error(`💥 Error syncing ${news.title}:`, error);
-                            }
-                        }
-                        
-                        console.log(`📊 Sync summary: ${syncedCount} success, ${failedCount} failed`);
-                    }
-                    
-                    // Load fresh data from Google Sheets
-                    console.log('📥 Loading updated data from Google Sheets...');
-                    const loadSuccess = await loadNewsFromGoogleSheets();
-                    
-                    if (loadSuccess) {
-                        console.log('✅ Successfully loaded data from Google Sheets');
-                    } else {
-                        console.log('⚠️ Failed to load data from Google Sheets, using local data');
-                    }
-                    
-                    // Force refresh all displays
-                    console.log('🔄 Refreshing all displays...');
-                    displayAdminNews();
-                    updateAdminStats();
-                    updateConnectionStatus();
-                    
-                    // Update main website if visible
-                    const mainWebsite = document.getElementById('mainWebsite');
-                    if (mainWebsite && !mainWebsite.classList.contains('hidden')) {
-                        console.log('🌐 Refreshing main website display...');
-                        showAllNews();
-                    }
-                    
-                    console.log('✅ All displays updated successfully');
-                    
-                    // Show success message with details
-                    let successMessage = '✅ Sinkronisasi selesai!\n\n';
-                    successMessage += `📊 Total berita di database: ${adminNews.length}\n`;
-                    if (syncedCount > 0) {
-                        successMessage += `📤 Berita berhasil diupload: ${syncedCount}\n`;
-                    }
-                    if (failedCount > 0) {
-                        successMessage += `❌ Berita gagal diupload: ${failedCount}\n`;
-                    }
-                    successMessage += '\n🔄 Semua tampilan telah diperbarui!';
-                    
-                    alert(successMessage);
-                    
-                } else {
-                    const errorText = await response.text();
-                    console.error('❌ Response error:', errorText);
-                    throw new Error(`HTTP ${response.status}: ${response.statusText} - ${errorText}`);
+                if (!testResponse.ok) {
+                    throw new Error(`Connection test failed: HTTP ${testResponse.status}`);
                 }
+                
+                const testData = await testResponse.json();
+                console.log('✅ Connection test successful:', testData);
+                
+                // Switch to online mode
+                isOnlineMode = true;
+                updateConnectionStatus();
+                
+                // Get local news to sync
+                const localNews = JSON.parse(localStorage.getItem('adminNews')) || [];
+                console.log('📊 Local news to sync:', localNews.length);
+                
+                let syncResults = {
+                    total: localNews.length,
+                    success: 0,
+                    failed: 0,
+                    errors: []
+                };
+                
+                // Sync each news item
+                if (localNews.length > 0) {
+                    console.log('📤 Starting batch upload to Google Sheets...');
+                    
+                    for (let i = 0; i < localNews.length; i++) {
+                        const news = localNews[i];
+                        console.log(`📝 Syncing ${i + 1}/${localNews.length}: ${news.title}`);
+                        
+                        try {
+                            const syncSuccess = await saveNewsToGoogleSheets(news);
+                            
+                            if (syncSuccess) {
+                                syncResults.success++;
+                                console.log(`✅ Successfully synced: ${news.title}`);
+                            } else {
+                                syncResults.failed++;
+                                syncResults.errors.push(`Failed to sync: ${news.title}`);
+                                console.log(`❌ Failed to sync: ${news.title}`);
+                            }
+                            
+                            // Rate limiting: delay between requests
+                            if (i < localNews.length - 1) {
+                                console.log('⏳ Waiting 1 second before next sync...');
+                                await new Promise(resolve => setTimeout(resolve, 1000));
+                            }
+                            
+                        } catch (error) {
+                            syncResults.failed++;
+                            syncResults.errors.push(`Error syncing ${news.title}: ${error.message}`);
+                            console.error(`💥 Error syncing ${news.title}:`, error);
+                        }
+                    }
+                    
+                    console.log('📊 Sync results:', syncResults);
+                } else {
+                    console.log('📝 No local news to sync');
+                }
+                
+                // Load fresh data from Google Sheets
+                console.log('📥 Loading updated data from Google Sheets...');
+                const loadSuccess = await loadNewsFromGoogleSheets();
+                
+                if (loadSuccess) {
+                    console.log('✅ Successfully reloaded from Google Sheets');
+                } else {
+                    console.log('⚠️ Failed to reload from Google Sheets');
+                }
+                
+                // Update all displays
+                console.log('🔄 Updating all displays...');
+                displayAdminNews();
+                updateAdminStats();
+                updateConnectionStatus();
+                
+                // Update main website if visible
+                const mainWebsite = document.getElementById('mainWebsite');
+                if (mainWebsite && !mainWebsite.classList.contains('hidden')) {
+                    console.log('🌐 Updating main website display...');
+                    showAllNews();
+                }
+                
+                // Show detailed success message
+                let message = '✅ Sinkronisasi selesai!\n\n';
+                message += `📊 Status:\n`;
+                message += `• Total berita lokal: ${syncResults.total}\n`;
+                message += `• Berhasil diupload: ${syncResults.success}\n`;
+                message += `• Gagal diupload: ${syncResults.failed}\n`;
+                message += `• Total berita di database: ${adminNews.length}\n\n`;
+                
+                if (syncResults.failed > 0) {
+                    message += '⚠️ Beberapa berita gagal disinkronkan.\n';
+                    message += 'Periksa console (F12) untuk detail error.\n\n';
+                }
+                
+                message += '🔄 Semua tampilan telah diperbarui!';
+                
+                alert(message);
+                console.log('✅ Manual sync completed successfully');
+                
             } catch (error) {
-                console.error('💥 Sync failed:', error);
+                console.error('💥 Manual sync failed:', error);
+                
+                // Ensure we're still in the right mode
+                isOnlineMode = false;
+                updateConnectionStatus();
                 
                 let errorMessage = '❌ Sinkronisasi gagal!\n\n';
                 
                 if (error.name === 'AbortError') {
-                    errorMessage += '⏰ Koneksi timeout (lebih dari 10 detik).\n\n';
+                    errorMessage += '⏰ Koneksi timeout (lebih dari 12 detik).\n\n';
                     errorMessage += 'Kemungkinan penyebab:\n';
                     errorMessage += '• Koneksi internet lambat\n';
                     errorMessage += '• Google Apps Script tidak merespons\n';
-                    errorMessage += '• Server Google sedang sibuk';
+                    errorMessage += '• Server Google sedang overload';
                 } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
-                    errorMessage += '🌐 Masalah koneksi internet atau CORS.\n\n';
+                    errorMessage += '🌐 Masalah koneksi atau CORS.\n\n';
                     errorMessage += 'Solusi:\n';
-                    errorMessage += '1. Pastikan koneksi internet stabil\n';
-                    errorMessage += '2. Pastikan Google Apps Script sudah di-deploy dengan benar\n';
-                    errorMessage += '3. Pastikan pengaturan "Who has access" = Anyone\n';
-                    errorMessage += '4. Coba deploy ulang Google Apps Script';
+                    errorMessage += '1. Periksa koneksi internet\n';
+                    errorMessage += '2. Pastikan Google Apps Script sudah di-deploy\n';
+                    errorMessage += '3. Pastikan "Who has access" = Anyone\n';
+                    errorMessage += '4. Coba refresh halaman dan sync lagi';
                 } else if (error.message.includes('404')) {
                     errorMessage += '🔍 Google Apps Script tidak ditemukan.\n\n';
-                    errorMessage += 'Pastikan:\n';
-                    errorMessage += '1. ID Script sudah benar di kode\n';
+                    errorMessage += 'Periksa:\n';
+                    errorMessage += '1. ID Script di kode sudah benar\n';
                     errorMessage += '2. Script sudah di-deploy sebagai Web App\n';
                     errorMessage += '3. URL deployment sudah benar';
                 } else {
                     errorMessage += `💥 Error: ${error.message}\n\n`;
-                    errorMessage += 'Periksa console browser (F12) untuk detail lebih lanjut.';
+                    errorMessage += 'Buka console browser (F12) untuk detail lengkap.';
                 }
                 
                 alert(errorMessage);
+                
             } finally {
+                // Always restore button state
                 syncBtn.innerHTML = originalText;
                 syncBtn.disabled = false;
                 updateConnectionStatus();
@@ -2845,5 +2992,5 @@ function getCategoryGradient(category) {
             codeContainer.appendChild(copyBtn);
         }
     </script>
-<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'95ffedb9d3176033',t:'MTc1MjY1MjQzNS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+<script>(function(){function c(){var b=a.contentDocument||a.contentWindow.document;if(b){var d=b.createElement('script');d.innerHTML="window.__CF$cv$params={r:'96000239e67ffce3',t:'MTc1MjY1MzI3NS4wMDAwMDA='};var a=document.createElement('script');a.nonce='';a.src='/cdn-cgi/challenge-platform/scripts/jsd/main.js';document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
 </html>
